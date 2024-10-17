@@ -27,6 +27,6 @@ they are needed in side projects.
 
 ## References
 The Base Engine took a lot of inspiration from three main sources:
-1. Vulkan Guide by @vblanco20-1: [\[GitHub Repo\]](https://github.com/vblanco20-1/vulkan-guide), [\[Blog Post\]](https://vkguide.dev/)
-2. VulkanStarter Project by @florianvazelle: [\[GitHub Repo\]](https://github.com/florianvazelle/VulkanStarter)
-3. Vulkan Tutorial by @amengede: [\[GitHub Repo\]](https://github.com/amengede/getIntoGameDev/tree/main/vulkan), [\[Youtube\]](https://www.youtube.com/watch?v=Est5AvResbE&list=PLn3eTxaOtL2Nr89hYzKPib7tvce-ZO4yB)
+1. Vulkan Guide by @vblanco20-1 | [\[GitHub Repo\]](https://github.com/vblanco20-1/vulkan-guide), [\[Blog Post\]](https://vkguide.dev/)
+2. VulkanStarter Project by @florianvazelle | [\[GitHub Repo\]](https://github.com/florianvazelle/VulkanStarter)
+3. Vulkan Tutorial by @amengede | [\[GitHub Repo\]](https://github.com/amengede/getIntoGameDev/tree/main/vulkan), [\[Youtube\]](https://www.youtube.com/watch?v=Est5AvResbE&list=PLn3eTxaOtL2Nr89hYzKPib7tvce-ZO4yB)
