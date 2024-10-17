@@ -8,6 +8,7 @@ learning the best practices for C++. I will continue to add
 features and make improvements to the Base Engine branch as
 they are needed in side projects.
 
+![Default Hello World! Triangle](/docs/pics/default_triangle.png)
 
 ## Projects On My Radar:
 ### Physics Simulations
