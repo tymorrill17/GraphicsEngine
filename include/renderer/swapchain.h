@@ -5,6 +5,7 @@
 #include "image.h"
 #include "frame.h"
 #include "queue_family.h"
+#include "../NonCopyable.h"
 
 #include <vulkan/vulkan.h>
 #include <vector>
@@ -20,7 +21,7 @@ struct SwapchainSupportDetails {
 	std::vector<VkPresentModeKHR> presentModes;
 };
 
-class Swapchain {
+class Swapchain : public NonCopyable {
 public:
 	Swapchain(const Device& device, const Window& window);
 	~Swapchain();

@@ -54,7 +54,7 @@ public:
 
 	// @brief Create a default, blank VkPipelineLayoutCreateInfo struct
 	static VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo();
-	// @brief Create a default, blank VkPipelineVertexInputStateCreateInfo struct
+	// @brief Create a default, blank VkPipelineVertexInputStateCreateInfo struct (probably won't need this when I implement buffer device address functionality)
 	static VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo();
 
 private:
