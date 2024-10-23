@@ -16,12 +16,13 @@ void Shader::loadShaderModule(const std::string& filepath, const Device& device,
 	file.read((char*)buffer.data(), filesize); // load entire file into the buffer
 	file.close();
 	// Now we have the entire shader in the buffer and can load it to Vulkan
-	VkShaderModuleCreateInfo createinfo;
-	createinfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createinfo.pNext = nullptr;
-	createinfo.codeSize = buffer.size() * sizeof(uint32_t); // codeSize has to be in bytes
-	createinfo.pCode = buffer.data();
-	createinfo.flags = 0;
+	VkShaderModuleCreateInfo createinfo{
+	.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+	.pNext = nullptr,
+	.flags = 0,
+	.codeSize = buffer.size() * sizeof(uint32_t), // codeSize has to be in byte
+	.pCode = buffer.data()
+	};
 
 	if (vkCreateShaderModule(device.device(), &createinfo, nullptr, &outShaderModule) != VK_SUCCESS) {
 		std::stringstream line;

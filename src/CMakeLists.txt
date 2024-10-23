@@ -1,4 +1,22 @@
-file(GLOB_RECURSE PROJECT_SOURCES "*.cpp")
+file(GLOB_RECURSE PROJECT_SOURCES
+	main.cpp
+	application/application.cpp
+	logger/logger.cpp
+	logger/debug_messenger.cpp
+	renderer/command.cpp
+	renderer/image.cpp
+	renderer/device.cpp
+	renderer/engine.cpp
+	renderer/frame.cpp
+	renderer/instance.cpp
+	renderer/pipeline.cpp
+	renderer/pipeline_builder.cpp
+	renderer/queue_family.cpp
+	renderer/shader.cpp
+	renderer/swapchain.cpp
+	renderer/sync.cpp
+	utility/allocator.cpp
+	utility/window.cpp)
 
 add_executable(run_application
 	${PROJECT_SOURCES}

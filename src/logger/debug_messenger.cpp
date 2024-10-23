@@ -29,10 +29,6 @@ DebugMessenger::~DebugMessenger() {
 		// Get the pointer to the extension function
 		auto destroyFunc = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance.handle(), "vkDestroyDebugUtilsMessengerEXT");
 
-		if (!destroyFunc) {
-			throw std::runtime_error("Failed to destroy debug messenger");
-		}
-
 		destroyFunc(instance.handle(), debugMessenger, nullptr);
 	}
 }

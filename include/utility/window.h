@@ -5,11 +5,12 @@
 #include <glm/vec2.hpp>
 #include "../renderer/instance.h"
 #include "logger/logger.h"
+#include "../NonCopyable.h"
 #include <string>
 #include <vector>
 
 // @brief Contains the window that will display the application
-class Window {
+class Window : NonCopyable {
 public:
 	// @brief Constructor for a window. Creates an SDL_Window object and initializes SDL
 	// 
@@ -21,15 +22,19 @@ public:
 	// @brief Destroys the SDL_Window
 	~Window();
 
+	Window(Window&& other) noexcept;
 
-	inline VkExtent2D extent() const { return windowExtent; }
+	inline VkExtent2D extent() const { return _windowExtent; }
 	inline const struct SDL_Window* SDL_window() const { return _window; }
 	inline struct SDL_Window* SDL_window() { return _window; }
-	inline VkSurfaceKHR surface() const { return vkSurface; }
-	inline bool shouldClose() const { return windowShouldClose; }
+	inline VkSurfaceKHR surface() const { return _surface; }
+	inline bool shouldClose() const { return _windowShouldClose; }
 
 	// @brief Processes SDL inputs and delegates actions relating to window behavior
 	void process_inputs();
+
+	// @brief Gets the current window size after resizing
+	void updateSize();
 
 	// @brief Get the required Vulkan extensions that the window system requires
 	//
@@ -42,22 +47,21 @@ public:
 	void create_surface(VkInstance instance);
 
 	// @brief Destroys window surface. Meant to be called in Window destructor
-	void destroy_surface();
+	void destroy_surface() const;
 
 private:
 	struct SDL_Window* _window;
-	VkExtent2D windowExtent;
+	VkExtent2D _windowExtent;
 
 	// @brief Name of the window
-	std::string name;
+	std::string _name;
 
 	// @brief the Vulkan surface associated with the window
-	VkSurfaceKHR vkSurface;
+	VkSurfaceKHR _surface;
 
 	// @brief VkInstance only needed to create a surface.
-	VkInstance instance;
+	VkInstance _instance;
 
-	bool windowShouldClose;
+	bool _windowShouldClose;
 
-	// TODO: window resizing
 };

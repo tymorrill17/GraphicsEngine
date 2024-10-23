@@ -1,8 +1,13 @@
 #pragma once
-#include "../renderer/engine.h"
-#include "../logger/logger.h"
-#include "../utility/window.h"
+#include "vulkan/vulkan.h"
 #include "../NonCopyable.h"
+#include "../utility/window.h"
+#include "../renderer/engine.h"
+
+const uint32_t APPLICATION_WIDTH = 1920;
+const uint32_t APPLICATION_HEIGHT = 1080;
+
+class Engine;
 
 // @brief The main program
 class Application : NonCopyable {

@@ -1,9 +1,9 @@
 #pragma once
+#include "vulkan/vulkan.h"
+#include "vma/vk_mem_alloc.h"
 #include "../utility/allocator.h"
 #include "command.h"
 #include "../NonCopyable.h"
-#include "vma/vk_mem_alloc.h"
-#include "vulkan/vulkan.h"
 
 // Base image class 
 class Image : public NonCopyable {
@@ -18,8 +18,6 @@ public:
 	inline virtual VkImageLayout imageLayout() const { return _imageLayout; }
 	inline virtual VkExtent3D extent() const { return _extent; }
 	inline virtual VkFormat format() const { return _format; }
-
-	virtual void cleanup() {};
 
 	// @brief Transitions image from currentLayout to newLayout
 	//
@@ -36,7 +34,7 @@ public:
 	// @param cmd - Command buffer to submit the copy to
 	// @param src - Image to be copied
 	// @param dst - destination image to copy to
-	static void copyImage(Command& cmd, Image& src, Image& dst);
+	static void copyImageOnGPU(Command& cmd, Image& src, Image& dst);
 
 	// @brief Populates a VkRenderingAttachmentInfo struct needed in order to begin rendering without a renderpass. 
 	//	      Normally, the renderpass contains information about the attachments, but we are using renderpass-less dynamic rendering
@@ -53,6 +51,8 @@ protected:
 	VkImageLayout _imageLayout;
 	VkExtent3D _extent;
 	VkFormat _format;
+
+	virtual void cleanup() {};
 };
 
 class AllocatedImage : public Image {
@@ -72,27 +72,39 @@ public:
 		VkExtent3D extent, VkFormat format, VkImageUsageFlags usageFlags,
 		VmaMemoryUsage memoryUsage, VkMemoryAllocateFlags vkMemoryUsage,
 		VkImageAspectFlags aspectFlags);
-	void cleanup() override;
+	
 
 	AllocatedImage(AllocatedImage&& other) noexcept;
 	AllocatedImage& operator=(AllocatedImage && other) noexcept;
+
+	// @brief Recreates the image for when the window is resized
+	void recreate(VkExtent3D extent);
 
 protected:
 	const Device& _device;
 	const Allocator& _allocator;
 	
 	VmaAllocation _allocation;
+
+	void createAllocatedImage();
+	void cleanup() override;
+
+	VkImageUsageFlags _usageFlags;
+	VmaMemoryUsage _memoryUsage;
+	VkMemoryAllocateFlags _vkMemoryUsage;
+	VkImageAspectFlags _aspectFlags;
 };
 
 class SwapchainImage : public Image {
 public:
 	SwapchainImage(const Device& device);
 	SwapchainImage(const Device& device, VkImage image, VkExtent3D extent, VkFormat format);
-	void cleanup() override;
 
 	SwapchainImage(SwapchainImage&& other) noexcept;
 	SwapchainImage& operator=(SwapchainImage&& other) noexcept;
 
 protected:
 	const Device& _device;
+	
+	void cleanup() override;
 };

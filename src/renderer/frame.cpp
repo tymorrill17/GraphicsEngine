@@ -8,7 +8,7 @@ Frame::Frame(const Device& device) : _device(device),
 	_command(device, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT) {}
 
 
-Frame::Frame(Frame&& other) noexcept : _device(std::move(other._device)),
+Frame::Frame(Frame&& other) noexcept : _device(other._device),
 	_presentSemaphore(std::move(other._presentSemaphore)),
 	_renderSemaphore(std::move(other._renderSemaphore)),
 	_renderFence(std::move(other._renderFence)),

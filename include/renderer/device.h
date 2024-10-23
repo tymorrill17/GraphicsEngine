@@ -1,11 +1,11 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include <vulkan/vk_enum_string_helper.h>
-#include "../utility/window.h"
+#include "device.h"
 #include "instance.h"
+#include "utility/window.h"
 #include "queue_family.h"
-#include "../NonCopyable.h"
 #include <vector>
+#include <string>
 #include <set>
 
 class Device : NonCopyable {

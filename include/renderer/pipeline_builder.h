@@ -1,10 +1,13 @@
 #pragma once
 #include "vulkan/vulkan.h"
-#include "pipeline.h"
+#include "NonCopyable.h"
 #include "device.h"
 #include "shader.h"
-#include "NonCopyable.h"
+#include "pipeline.h"
 #include <vector>
+#include <stdexcept>
+
+class Pipeline;
 
 class PipelineBuilder : NonCopyable {
 public:

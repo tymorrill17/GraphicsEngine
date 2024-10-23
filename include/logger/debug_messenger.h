@@ -1,6 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include "../renderer/instance.h"
+#include "logger.h"
 #include <iostream>
 
 class Instance;

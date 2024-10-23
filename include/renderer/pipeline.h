@@ -1,7 +1,7 @@
 #pragma once
 #include "vulkan/vulkan.h"
-#include "device.h"
 #include "../NonCopyable.h"
+#include "device.h"
 
 class Pipeline : NonCopyable {
 public:

@@ -1,5 +1,6 @@
 #pragma once
 #include "vulkan/vulkan.h"
+#include "../NonCopyable.h"
 #include "device.h"
 #include "command.h"
 #include "sync.h"

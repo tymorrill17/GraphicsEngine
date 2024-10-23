@@ -1,6 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include "../logger/logger.h"
+#include "logger/logger.h"
 #include <optional>
 #include <vector>
 

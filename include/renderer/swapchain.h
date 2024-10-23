@@ -1,18 +1,19 @@
 #pragma once
+#include <vulkan/vulkan.h>
 
 #include "instance.h"
 #include "device.h"
-#include "image.h"
 #include "frame.h"
 #include "queue_family.h"
 #include "../NonCopyable.h"
+#include "image.h"
 
-#include <vulkan/vulkan.h>
 #include <vector>
 #include <sstream>
 
 class Device;
 class Window;
+class SwapchainImage;
 
 // @brief Stores supported swapchain attributes
 struct SwapchainSupportDetails {
@@ -23,24 +24,23 @@ struct SwapchainSupportDetails {
 
 class Swapchain : public NonCopyable {
 public:
-	Swapchain(const Device& device, const Window& window);
+	Swapchain(const Device& device, Window& window);
 	~Swapchain();
 
-	// @brief Get the actual VkSwapchainKHR handle
-	inline VkSwapchainKHR handle() const { return _swapchain; }
-	// @brief Get the swapchain image format
-	inline VkFormat imageFormat() const { return _imageFormat; }
-	// @brief Get the swapchain image view extent
-	inline VkExtent2D extent() const { return _extent; }
-	// @brief Get the number of swapchain images
-	inline size_t imageCount() const { return _images.size(); }
-	// @brief Get the swapchain support details
-	inline SwapchainSupportDetails supportDetails() const { return _supportDetails; }
-	// @brief Get the swapchain image at the specified index
-	inline SwapchainImage& image(uint32_t index) { return _images[index]; }
-	// @brief Get the number of frames in the swapchain
-	inline uint32_t framesInFlight() const { return _framesInFlight; }
+	// @brief Recreates the swapchain as a result of window resizing
+	void recreate();
 
+	inline VkSwapchainKHR handle() const { return _swapchain; }
+	inline VkFormat imageFormat() const { return _imageFormat; }
+	inline VkExtent2D extent() const { return _extent; }
+	inline size_t imageCount() const { return _images.size(); }
+	inline uint32_t imageIndex() const { return _imageIndex; }
+	inline SwapchainSupportDetails supportDetails() const { return _supportDetails; }
+	inline SwapchainImage& image(uint32_t index) { return _images[index]; }
+	inline uint32_t framesInFlight() const { return _framesInFlight; }
+	inline bool resizeRequested() const { return _resizeRequested; }
+
+	void acquireNextImage(Semaphore* semaphore, Fence* fence);
 	void presentToScreen(VkQueue queue, Frame& frame, uint32_t imageIndex);
 
 	// STATIC METHODS
@@ -53,12 +53,11 @@ public:
 
 private:
 	const Device& _device;
-	const Window& _window;
+	Window& _window;
 
 	// @brief Supported swapchain attributes
 	SwapchainSupportDetails _supportDetails;
 	VkSwapchainKHR _swapchain;
-	VkSwapchainKHR _old_swapchain;
 
 	// @brief Swapchain images
 	std::vector<SwapchainImage> _images;
@@ -69,12 +68,13 @@ private:
 	VkExtent2D _extent;
 	// @brief How many frames the swapchain contains and can be rendered in parallel
 	uint32_t _framesInFlight;
+	// @brief The index of the current swapchain image being rendered to
+	uint32_t _imageIndex;
 
-	// @brief Creates a swapchain
+	bool _resizeRequested; 
+
 	void createSwapchain();
-
-	//@brief Creates swapchain image views. Images are created during swapchain creation. Called in createSwapchain()
-	void createSwapchainImages();
+	void cleanup();
 
 	static VkSurfaceFormatKHR selectSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	static VkPresentModeKHR selectSwapchainPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);

@@ -80,9 +80,7 @@ void Engine::render() {
 	vkResetFences(device.device(), 1, &currentRenderFence);
 
 	// Next, request current frame's image from the swapchain
-	VkSemaphore currentPresentSemaphore = getCurrentFrame().presentSemaphore().handle();
-	uint32_t swapchainImageIndex;
-	vkAcquireNextImageKHR(device.device(), swapchain.handle(), 1000000000, currentPresentSemaphore, nullptr, &swapchainImageIndex);
+	swapchain.acquireNextImage(&getCurrentFrame().presentSemaphore(), nullptr);
 
 	// Get the current frame's command buffer
 	Command& cmd = getCurrentFrame().command();
@@ -127,18 +125,25 @@ void Engine::render() {
 	// Draw image is going to be copied to the swapchain image, so transition it to a transfer source layout
 	drawImage.transitionImage(cmd, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	// Swapchain image needs to be transitioned to a transfer destination layout
-	swapchain.image(swapchainImageIndex).transitionImage(cmd, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	swapchain.image(swapchain.imageIndex()).transitionImage(cmd, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-	Image::copyImage(cmd, drawImage, swapchain.image(swapchainImageIndex));
+	Image::copyImageOnGPU(cmd, drawImage, swapchain.image(swapchain.imageIndex()));
 
 	// Draw ImGui menu here to the swapchain image, but transition the swapchain image to color attachment first
 
 	// Transition swapchain image to a presentation-ready layout
-	swapchain.image(swapchainImageIndex).transitionImage(cmd, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	swapchain.image(swapchain.imageIndex()).transitionImage(cmd, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
 	cmd.end();
 	cmd.submitToQueue(device.graphicsQueue(), getCurrentFrame()); // Submit the command buffer
-	swapchain.presentToScreen(device.presentQueue(), getCurrentFrame(), swapchainImageIndex); // Present to screen
+	swapchain.presentToScreen(device.presentQueue(), getCurrentFrame(), swapchain.imageIndex()); // Present to screen
 	
 	frameNumber++;
+}
+
+void Engine::resizeCallback() {
+	if (swapchain.resizeRequested()) {
+		swapchain.recreate();
+		drawImage.recreate({ window.extent().width, window.extent().height, 1 });
+	}
 }

@@ -2,29 +2,29 @@
 #include <sstream>
 
 Window::Window(glm::ivec2 dimensions, const std::string& name) :
-	windowExtent{ static_cast<uint32_t>(dimensions.x), static_cast<uint32_t>(dimensions.y) }, 
-	instance(VK_NULL_HANDLE), 
-	vkSurface(VK_NULL_HANDLE), 
-	windowShouldClose(false) {
+	_windowExtent{ static_cast<uint32_t>(dimensions.x), static_cast<uint32_t>(dimensions.y) },
+	_name(name), _instance(VK_NULL_HANDLE),
+	_surface(VK_NULL_HANDLE),
+	_windowShouldClose(false) {
 
 	Logger* logger = Logger::get_logger();
 	// Initialize SDL
 	SDL_Init(SDL_INIT_VIDEO);
 
 	// Create a window compatible with Vulkan surfaces
-	SDL_WindowFlags windowFlags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
+	SDL_WindowFlags windowFlags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 	struct SDL_Window* window = SDL_CreateWindow(
 		name.c_str(),
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
-		windowExtent.width,
-		windowExtent.height,
+		_windowExtent.width,
+		_windowExtent.height,
 		windowFlags
 	);
 
 	if (window) {
 		std::stringstream line;
-		line << "Created a window titled \"" << name << "\" of size " << windowExtent.width << "x" << windowExtent.height << ".";
+		line << "Created a window titled \"" << name << "\" of size " << _windowExtent.width << "x" << _windowExtent.height << ".";
 		logger->print(line.str());
 	}
 	else {
@@ -37,6 +37,17 @@ Window::Window(glm::ivec2 dimensions, const std::string& name) :
 Window::~Window() {
 	destroy_surface();
 	SDL_DestroyWindow(_window);
+}
+
+Window::Window(Window&& other) noexcept : 
+	_window(other._window), _windowExtent(other._windowExtent),
+	_name(std::move(other._name)), _surface(other._surface),
+	_instance(other._instance), _windowShouldClose(false) {
+	other._window = nullptr;
+	other._windowExtent = { 0, 0 };
+	other._name.clear();
+	other._surface = VK_NULL_HANDLE;
+	other._instance = VK_NULL_HANDLE;
 }
 
 void Window::getRequiredInstanceExtensions(std::vector<const char*>& extensions) {
@@ -55,7 +66,7 @@ void Window::process_inputs() {
 		//close the window when user alt-f4s or clicks the X button			
 		switch (e.type) {
 		case SDL_QUIT:
-			windowShouldClose = true;
+			_windowShouldClose = true;
 			break;
 		case SDL_WINDOWEVENT:
 			switch (e.window.event) {
@@ -83,20 +94,27 @@ void Window::process_inputs() {
 	}
 }
 
+void Window::updateSize() {
+	int width, height;
+	SDL_GetWindowSize(_window, &width, &height);
+	_windowExtent.width = width;
+	_windowExtent.height = height;
+}
+
 void Window::create_surface(VkInstance instance) {
 	Logger* logger = Logger::get_logger();
 
-	this->instance = instance;
+	_instance = instance;
 
-	if (!SDL_Vulkan_CreateSurface(_window, instance, &vkSurface)) {
+	if (!SDL_Vulkan_CreateSurface(_window, instance, &_surface)) {
 		throw std::runtime_error("Failed to create window surface!");
 	}
 
 	logger->print("Created SDL window surface for Vulkan");
 }
 
-void Window::destroy_surface() {
-	if (vkSurface) {
-		vkDestroySurfaceKHR(instance, vkSurface, nullptr);
+void Window::destroy_surface() const {
+	if (_surface) {
+		vkDestroySurfaceKHR(_instance, _surface, nullptr);
 	}
 }

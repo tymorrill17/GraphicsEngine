@@ -1,8 +1,6 @@
 #include "renderer/swapchain.h"
 
-Swapchain::Swapchain(const Device& device, const Window& window) 
-	: _swapchain(VK_NULL_HANDLE), _old_swapchain(VK_NULL_HANDLE), _extent(), _device(device), _window(window), _imageFormat() {
-	
+void Swapchain::createSwapchain() {
 	Logger* logger = Logger::get_logger();
 
 	// Query swapchain support details and set the extent to the same as the window
@@ -53,8 +51,6 @@ Swapchain::Swapchain(const Device& device, const Window& window)
 		swapchainCreateInfo.pQueueFamilyIndices = nullptr;
 	}
 
-	swapchainCreateInfo.oldSwapchain = _old_swapchain;
-
 	if (vkCreateSwapchainKHR(_device.device(), &swapchainCreateInfo, nullptr, &_swapchain) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create swapchain!");
 	}
@@ -75,10 +71,30 @@ Swapchain::Swapchain(const Device& device, const Window& window)
 	}
 }
 
-Swapchain::~Swapchain() {
-	vkDestroySwapchainKHR(_device.device(), _swapchain, nullptr);
+Swapchain::Swapchain(const Device& device, Window& window) 
+	: _swapchain(VK_NULL_HANDLE),
+	_extent{0, 0}, _device(device),
+	_window(window), _imageFormat(),
+	_imageIndex(0), _resizeRequested(false) {
+	createSwapchain();
 }
 
+void Swapchain::cleanup() {
+	vkDestroySwapchainKHR(_device.device(), _swapchain, nullptr);
+	_images.clear();
+}
+
+Swapchain::~Swapchain() {
+	cleanup();
+}
+
+void Swapchain::recreate() {
+	vkDeviceWaitIdle(_device.device()); // Wait for device to finish its tasks
+	cleanup(); // Destroy old swapchain
+	_window.updateSize(); // Update the window's extent (Maybe should move this elsewhere
+	createSwapchain(); // Recreate the swapchain
+	_resizeRequested = false;
+}
 
 VkSurfaceFormatKHR Swapchain::selectSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 	// Try to find support for 8-bit SRGB color format
@@ -144,6 +160,15 @@ VkExtent2D Swapchain::setSwapchainExtent(VkSurfaceCapabilitiesKHR capabilities, 
 	}
 }
 
+void Swapchain::acquireNextImage(Semaphore* semaphore, Fence* fence) {
+	VkResult e = vkAcquireNextImageKHR(_device.device(), _swapchain, 1000000000, semaphore->handle(), nullptr, &_imageIndex);
+	if (e == VK_ERROR_OUT_OF_DATE_KHR) {
+		_resizeRequested = true;
+	} else if(e != VK_SUCCESS) {
+		throw std::runtime_error("Failed to acquire next swapchain image!");
+	}
+}
+
 void Swapchain::presentToScreen(VkQueue queue, Frame& frame, uint32_t imageIndex) {
 	VkSemaphore waitSemaphore = frame.renderSemaphore().handle();
 	VkPresentInfoKHR presentInfo{
@@ -155,7 +180,10 @@ void Swapchain::presentToScreen(VkQueue queue, Frame& frame, uint32_t imageIndex
 		.pSwapchains = &_swapchain,
 		.pImageIndices = &imageIndex
 	};
-	if (vkQueuePresentKHR(queue, &presentInfo) != VK_SUCCESS) {
+	VkResult e = vkQueuePresentKHR(queue, &presentInfo);
+	if (e == VK_ERROR_OUT_OF_DATE_KHR || e == VK_SUBOPTIMAL_KHR) {
+		_resizeRequested = true;
+	} else if (e != VK_SUCCESS) {
 		throw std::runtime_error("Failed to present to screen!");
 	}
 }

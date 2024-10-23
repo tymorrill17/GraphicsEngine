@@ -3,17 +3,7 @@
 Image::Image(VkImage image, VkImageView imageView, VkExtent3D extent, VkFormat format, VkImageLayout imageLayout) :
 	_image(image), _imageView(imageView), _extent(extent), _format(format), _imageLayout(imageLayout) {}
 
-AllocatedImage::AllocatedImage(const Device& device, const Allocator& allocator) :
-	Image(VK_NULL_HANDLE, VK_NULL_HANDLE, {0, 0, 0}, VK_FORMAT_UNDEFINED, VK_IMAGE_LAYOUT_UNDEFINED),
-	_device(device), _allocator(allocator), _allocation(nullptr) {}
-
-AllocatedImage::AllocatedImage(const Device& device, const Allocator& allocator,
-	VkExtent3D extent, VkFormat format, VkImageUsageFlags usageFlags,
-	VmaMemoryUsage memoryUsage, VkMemoryAllocateFlags vkMemoryUsage,
-	VkImageAspectFlags aspectFlags) :
-	Image(VK_NULL_HANDLE, VK_NULL_HANDLE, extent, format, VK_IMAGE_LAYOUT_UNDEFINED),
-	_device(device), _allocator(allocator), _allocation(nullptr) {
-
+void AllocatedImage::createAllocatedImage() {
 	VkImageCreateInfo imageInfo{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		.pNext = nullptr,
@@ -24,20 +14,20 @@ AllocatedImage::AllocatedImage(const Device& device, const Allocator& allocator,
 		.arrayLayers = 1,
 		.samples = VK_SAMPLE_COUNT_1_BIT, // Only applicable for target images
 		.tiling = VK_IMAGE_TILING_OPTIMAL,
-		.usage = usageFlags
+		.usage = _usageFlags
 	};
 
 	VmaAllocationCreateInfo allocInfo{
-		.usage = memoryUsage,
-		.requiredFlags = static_cast<VkMemoryPropertyFlags>(vkMemoryUsage)
+		.usage = _memoryUsage,
+		.requiredFlags = static_cast<VkMemoryPropertyFlags>(_vkMemoryUsage)
 	};
 
-	if (vmaCreateImage(allocator.handle(), &imageInfo, &allocInfo, &_image, &_allocation, nullptr) != VK_SUCCESS) {
+	if (vmaCreateImage(_allocator.handle(), &imageInfo, &allocInfo, &_image, &_allocation, nullptr) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create and allocate image!");
 	}
 
 	VkImageSubresourceRange subresourceRange{
-		.aspectMask = aspectFlags,
+		.aspectMask = _aspectFlags,
 		.baseMipLevel = 0,
 		.levelCount = 1,
 		.baseArrayLayer = 0,
@@ -58,6 +48,22 @@ AllocatedImage::AllocatedImage(const Device& device, const Allocator& allocator,
 	}
 }
 
+AllocatedImage::AllocatedImage(const Device& device, const Allocator& allocator) :
+	Image(VK_NULL_HANDLE, VK_NULL_HANDLE, {0, 0, 0}, VK_FORMAT_UNDEFINED, VK_IMAGE_LAYOUT_UNDEFINED),
+	_device(device), _allocator(allocator), _allocation(nullptr), _usageFlags(0), _memoryUsage(VMA_MEMORY_USAGE_UNKNOWN),
+	_vkMemoryUsage(VMA_MEMORY_USAGE_UNKNOWN), _aspectFlags(VK_IMAGE_ASPECT_NONE) {}
+
+AllocatedImage::AllocatedImage(const Device& device, const Allocator& allocator,
+	VkExtent3D extent, VkFormat format, VkImageUsageFlags usageFlags,
+	VmaMemoryUsage memoryUsage, VkMemoryAllocateFlags vkMemoryUsage,
+	VkImageAspectFlags aspectFlags) :
+	Image(VK_NULL_HANDLE, VK_NULL_HANDLE, extent, format, VK_IMAGE_LAYOUT_UNDEFINED),
+	_device(device), _allocator(allocator), _allocation(nullptr), _usageFlags(usageFlags),
+	_memoryUsage(memoryUsage), _vkMemoryUsage(vkMemoryUsage), _aspectFlags(aspectFlags) {
+
+	createAllocatedImage();
+}
+
 void AllocatedImage::cleanup() {
 	vkDestroyImageView(_device.device(), _imageView, nullptr);
 	vmaDestroyImage(_allocator.handle(), _image, _allocation);
@@ -65,7 +71,9 @@ void AllocatedImage::cleanup() {
 
 AllocatedImage::AllocatedImage(AllocatedImage&& other) noexcept : 
 	Image(other._image, other._imageView, other._extent, other._format, other._imageLayout),
-	_device(other._device), _allocator(other._allocator), _allocation(other._allocation) {
+	_device(other._device), _allocator(other._allocator), _allocation(other._allocation),
+	_usageFlags(other._usageFlags), _memoryUsage(other._memoryUsage), _vkMemoryUsage(other._vkMemoryUsage),
+	_aspectFlags(other._aspectFlags) {
 	other._allocation = nullptr;
 	other._image = VK_NULL_HANDLE;
 	other._imageView = VK_NULL_HANDLE;
@@ -85,6 +93,10 @@ AllocatedImage& AllocatedImage::operator=(AllocatedImage&& other) noexcept {
 		_extent = other._extent;
 		_format = other._format;
 		_allocation = other._allocation;
+		_usageFlags = other._usageFlags;
+		_memoryUsage = other._memoryUsage;
+		_vkMemoryUsage = other._vkMemoryUsage;
+		_aspectFlags = other._aspectFlags;
 
 		other._image = VK_NULL_HANDLE;
 		other._imageView = VK_NULL_HANDLE;
@@ -94,6 +106,14 @@ AllocatedImage& AllocatedImage::operator=(AllocatedImage&& other) noexcept {
 		other._allocation = nullptr;
 	}
 	return *this;
+}
+
+void AllocatedImage::recreate(VkExtent3D extent) {
+	cleanup();
+	_extent = extent;
+	_imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	_imageView = VK_NULL_HANDLE;
+	createAllocatedImage();
 }
 
 SwapchainImage::SwapchainImage(const Device& device) :
@@ -194,7 +214,7 @@ void Image::transitionImage(Command& cmd, VkImageLayout newLayout) {
 	_imageLayout = newLayout;
 }
 
-void Image::copyImage(Command& cmd, Image& src, Image& dst) {
+void Image::copyImageOnGPU(Command& cmd, Image& src, Image& dst) {
 	VkImageBlit2 blitRegion{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
 		.pNext = nullptr

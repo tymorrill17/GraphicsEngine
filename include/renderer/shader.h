@@ -1,9 +1,10 @@
 #pragma once
 #include "vulkan/vulkan.h"
-#include "renderer/device.h"
+#include "device.h"
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
 class Shader {
 public:

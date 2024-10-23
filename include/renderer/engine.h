@@ -1,18 +1,16 @@
 #pragma once
-#include "../logger/logger.h"
-#include "../logger/debug_messenger.h"
-#include "../utility/window.h"
-#include "../utility/allocator.h"
-#include "instance.h"
-#include "device.h"
-#include "swapchain.h"
-#include "pipeline_builder.h"
-#include "frame.h"
-#include "image.h"
-#include "../NonCopyable.h"
 #include "vulkan/vulkan.h"
+#include "../NonCopyable.h"
+#include "../utility/allocator.h"
+#include "../logger/debug_messenger.h"
+#include "shader.h"
+#include "pipeline_builder.h"
+#include "swapchain.h"
+#include "image.h"
 #include <string>
 
+class Swapchain;
+class AllocatedImage;
 
 class Engine : NonCopyable {
 public:
@@ -25,10 +23,13 @@ public:
 	// @brief Renders the scene and presents it to the surface
 	void render();
 
+	// @brief Handles changes that need to be made when the window is resized
+	void resizeCallback();
+
 
 private:
 	Logger* logger; // Debug logger
-	Window window; // Main window to render to
+	Window& window; // Main window to render to
 	Instance instance;
 	DebugMessenger debugMessenger; // Vulkan debug messenger callback for validation layers
 	Device device; // Device object containing physical and logical devices
