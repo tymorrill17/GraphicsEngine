@@ -5,7 +5,8 @@ Window::Window(glm::ivec2 dimensions, const std::string& name) :
 	_windowExtent{ static_cast<uint32_t>(dimensions.x), static_cast<uint32_t>(dimensions.y) },
 	_name(name), _instance(VK_NULL_HANDLE),
 	_surface(VK_NULL_HANDLE),
-	_windowShouldClose(false) {
+	_windowShouldClose(false),
+	_pauseRendering(false) {
 
 	Logger* logger = Logger::get_logger();
 	// Initialize SDL
@@ -35,14 +36,17 @@ Window::Window(glm::ivec2 dimensions, const std::string& name) :
 }
 
 Window::~Window() {
-	destroy_surface();
+	if (_surface) {
+		vkDestroySurfaceKHR(_instance, _surface, nullptr);
+	}
 	SDL_DestroyWindow(_window);
 }
 
 Window::Window(Window&& other) noexcept : 
 	_window(other._window), _windowExtent(other._windowExtent),
 	_name(std::move(other._name)), _surface(other._surface),
-	_instance(other._instance), _windowShouldClose(false) {
+	_instance(other._instance), _windowShouldClose(other._windowShouldClose),
+	_pauseRendering(other._pauseRendering) {
 	other._window = nullptr;
 	other._windowExtent = { 0, 0 };
 	other._name.clear();
@@ -71,8 +75,10 @@ void Window::process_inputs() {
 		case SDL_WINDOWEVENT:
 			switch (e.window.event) {
 			case SDL_WINDOWEVENT_MINIMIZED:
+				_pauseRendering = true;
 				break;
 			case SDL_WINDOWEVENT_RESTORED:
+				_pauseRendering = false;
 				break;
 			}
 			break;
@@ -111,10 +117,4 @@ void Window::create_surface(VkInstance instance) {
 	}
 
 	logger->print("Created SDL window surface for Vulkan");
-}
-
-void Window::destroy_surface() const {
-	if (_surface) {
-		vkDestroySurfaceKHR(_instance, _surface, nullptr);
-	}
 }

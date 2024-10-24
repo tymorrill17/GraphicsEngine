@@ -3,6 +3,8 @@
 #include "../NonCopyable.h"
 #include "../utility/window.h"
 #include "../renderer/engine.h"
+#include <thread>
+#include <chrono>
 
 const uint32_t APPLICATION_WIDTH = 1920;
 const uint32_t APPLICATION_HEIGHT = 1080;

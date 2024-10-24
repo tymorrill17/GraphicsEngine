@@ -29,6 +29,7 @@ public:
 	inline struct SDL_Window* SDL_window() { return _window; }
 	inline VkSurfaceKHR surface() const { return _surface; }
 	inline bool shouldClose() const { return _windowShouldClose; }
+	inline bool pauseRendering() const { return _pauseRendering; }
 
 	// @brief Processes SDL inputs and delegates actions relating to window behavior
 	void process_inputs();
@@ -46,9 +47,6 @@ public:
 	// @param instance - Vulkan instance to connect the surface with
 	void create_surface(VkInstance instance);
 
-	// @brief Destroys window surface. Meant to be called in Window destructor
-	void destroy_surface() const;
-
 private:
 	struct SDL_Window* _window;
 	VkExtent2D _windowExtent;
@@ -63,5 +61,5 @@ private:
 	VkInstance _instance;
 
 	bool _windowShouldClose;
-
+	bool _pauseRendering;
 };
