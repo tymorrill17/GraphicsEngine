@@ -6,7 +6,8 @@ Window::Window(glm::ivec2 dimensions, const std::string& name) :
 	_name(name), _instance(VK_NULL_HANDLE),
 	_surface(VK_NULL_HANDLE),
 	_windowShouldClose(false),
-	_pauseRendering(false) {
+	_pauseRendering(false),
+	_isFullscreen(false) {
 
 	Logger* logger = Logger::get_logger();
 	// Initialize SDL
@@ -46,7 +47,7 @@ Window::Window(Window&& other) noexcept :
 	_window(other._window), _windowExtent(other._windowExtent),
 	_name(std::move(other._name)), _surface(other._surface),
 	_instance(other._instance), _windowShouldClose(other._windowShouldClose),
-	_pauseRendering(other._pauseRendering) {
+	_pauseRendering(other._pauseRendering), _isFullscreen(other._isFullscreen) {
 	other._window = nullptr;
 	other._windowExtent = { 0, 0 };
 	other._name.clear();
@@ -84,6 +85,16 @@ void Window::process_inputs() {
 			break;
 		case SDL_KEYDOWN:
 			switch (e.key.keysym.sym) {
+			case SDLK_F11:
+				if (_isFullscreen) {
+					SDL_SetWindowFullscreen(_window, 0);
+					_isFullscreen = false;
+				}
+				else {
+					SDL_SetWindowFullscreen(_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+					_isFullscreen = true;
+				}
+				break;
 			default:
 				break;
 			}

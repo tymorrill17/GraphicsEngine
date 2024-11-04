@@ -30,6 +30,7 @@ public:
 	inline VkSurfaceKHR surface() const { return _surface; }
 	inline bool shouldClose() const { return _windowShouldClose; }
 	inline bool pauseRendering() const { return _pauseRendering; }
+	inline bool isFullscreen() const { return _isFullscreen; }
 
 	// @brief Processes SDL inputs and delegates actions relating to window behavior
 	void process_inputs();
@@ -62,4 +63,5 @@ private:
 
 	bool _windowShouldClose;
 	bool _pauseRendering;
+	bool _isFullscreen;
 };
