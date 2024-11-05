@@ -7,6 +7,7 @@
 #include "pipeline_builder.h"
 #include "swapchain.h"
 #include "image.h"
+#include "descriptor.h"
 #include <string>
 
 class Swapchain;
@@ -39,6 +40,9 @@ private:
 	std::vector<Frame> frames; // Contains command buffers and sync objects for each frame in the swapchain
 	uint32_t frameNumber; // Keeps track of the number of rendered frames
 	AllocatedImage drawImage; // Image that gets rendered to then copied to the swapchain image
+	DescriptorLayoutBuilder descriptorLayoutBuilder; // Builds descriptor set layouts
+	DescriptorSets renderDescriptorSets; // Keeps track of all descriptor sets related to rendering
+	DescriptorSets computeDescriptorSets; // Keeps track of all compute-related descriptor sets
 
 	Pipeline defaultPipeline;
 	

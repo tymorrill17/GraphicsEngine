@@ -1,5 +1,16 @@
 #include "renderer/engine.h"
 
+static std::vector<PoolSizeRatio> renderDescriptorSetSizes = {
+	{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
+	{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10},
+	{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10},
+	//{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10}
+};
+
+static std::vector<PoolSizeRatio> computeDescriptorSetSizes = {
+	{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}
+};
+
 static Pipeline buildDefaultPipeline(const Device& device, PipelineBuilder& pipelineBuilder, const Swapchain& swapchain) {
 
 	pipelineBuilder.clear();
@@ -40,7 +51,10 @@ Engine::Engine(Window& window) :
 	drawImage(device, allocator, VkExtent3D{ window.extent().width, window.extent().height, 1 }, swapchain.imageFormat(),
 		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		VMA_MEMORY_USAGE_GPU_ONLY, VkMemoryAllocateFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), VK_IMAGE_ASPECT_COLOR_BIT),
-	defaultPipeline(device) {
+	defaultPipeline(device),
+	descriptorLayoutBuilder(device),
+	renderDescriptorSets(device, 10, renderDescriptorSetSizes),
+	computeDescriptorSets(device, 10, computeDescriptorSetSizes) {
 
 	logger = Logger::get_logger();
 
