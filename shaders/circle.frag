@@ -1,29 +1,33 @@
 #version 450
 
-//shader input
-// layout (location = 0) in vec2 texCoord;
-
-//output write
-
-layout(location = 0) in vec3 fragColor;
+layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec2 fragOffset;
 layout (location = 0) out vec4 outColor;
 
+const int MAX_PARTICLES = 100000;
 const int NUM_PARTICLES = 1;
 
-layout (set = 0, binding = 0) readonly buffer ParticleInfo {
-	vec2 positions[NUM_PARTICLES];
-	vec2 velocities[NUM_PARTICLES];
-	vec3 colors[NUM_PARTICLES];
+struct Particle2D {
+	vec2 position;
+	vec2 velocity;
+	vec3 color;
+};
+
+layout (set = 0, binding = 0) uniform GlobalParticleInfo {
 	vec3 defaultColor;
 	float radius;
-} pinfo;
+} globalParticleInfo;
+
+layout (set = 0, binding = 1) readonly buffer ParticleData {
+	Particle2D particles[MAX_PARTICLES];
+} particleData;
 
 void main() 
 {
 	float dist = dot(fragOffset,fragOffset);
+	float radiusSquared = globalParticleInfo.radius * globalParticleInfo.radius;
 
-	if (dist > 1.0) discard;
+	if (dist > 1) discard;
 
-	outColor = vec4(fragColor, 1.0);
+	outColor = fragColor;
 }

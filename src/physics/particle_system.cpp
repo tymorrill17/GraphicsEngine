@@ -1,11 +1,15 @@
 #include "physics/particle_system.h"
 
-ParticleSystem2D::ParticleSystem2D(int numParticles, float radius, Particle2D* particles) :
+ParticleSystem2D::ParticleSystem2D(int numParticles, float radius) :
 	_numParticles(numParticles),
-	_particleRadius(radius),
-	_particles(particles) {
+	_particleRadius(radius) {
 
+	_particles = new Particle2D[MAX_PARTICLES];
 	arrangeParticles();
+}
+
+ParticleSystem2D::~ParticleSystem2D() {
+	delete _particles;
 }
 
 void ParticleSystem2D::arrangeParticles() {
@@ -19,7 +23,7 @@ void ParticleSystem2D::arrangeParticles() {
 
 	for (int i = 0; i < _numParticles; i++) {
 		// Arrange the positions of the particles into grids
-		_particles->position.x = static_cast<float>((i) % gridSize) * spacing + offset.x;
-		_particles->position.y = static_cast<float>((i) / gridSize) * spacing + offset.y;
+		_particles[i].position.x = static_cast<float>((i) % gridSize) * spacing + offset.x;
+		_particles[i].position.y = static_cast<float>((i) / gridSize) * spacing + offset.y;
 	}
 }

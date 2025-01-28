@@ -25,7 +25,6 @@ private:
 	std::vector<VkDescriptorSetLayout> _particleDescriptors;
 	std::vector<VkDescriptorSet> _particleSet;
 
-
 	const int _numParticles;
 
 	void buildPipeline();
