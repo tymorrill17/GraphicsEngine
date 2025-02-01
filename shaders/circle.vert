@@ -19,6 +19,12 @@ struct Particle2D {
 	vec3 color;
 };
 
+layout (set = 1, binding = 0) uniform GlobalUBO {
+	mat4 projection;
+	mat4 view;
+	float aspectRatio;
+} globalBuffer;
+
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec2 fragOffset;
 
@@ -36,7 +42,12 @@ void main()
 {
 	int particleIndex = gl_VertexIndex / NUM_OFFSETS;
 	fragOffset = OFFSETS[gl_VertexIndex % NUM_OFFSETS];
+	vec3 cameraRightWorld = {globalBuffer.view[0][0], globalBuffer.view[1][0], globalBuffer.view[2][0]};
+	vec3 cameraUpWorld = {globalBuffer.view[0][1], globalBuffer.view[1][1], globalBuffer.view[2][1]};
 	fragColor = vec4(particleData.particles[particleIndex].color, 1.0f);
-	vec3 worldPosition = vec3(particleData.particles[particleIndex].position + fragOffset * globalParticleInfo.radius, 0.0);
-	gl_Position = vec4(worldPosition, 1.0);
+	vec3 worldPosition = vec3(particleData.particles[particleIndex].position, 0.0);
+	worldPosition = worldPosition.xyz 
+		+ globalParticleInfo.radius * fragOffset.x * cameraRightWorld 
+		+ globalParticleInfo.radius * fragOffset.y * cameraUpWorld;
+	gl_Position = globalBuffer.projection * globalBuffer.view * vec4(worldPosition, 1.0);
 }

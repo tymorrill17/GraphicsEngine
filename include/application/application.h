@@ -2,6 +2,7 @@
 #include "vulkan/vulkan.h"
 #include "NonCopyable.h"
 #include "utility/window.h"
+#include "utility/camera.h"
 #include "renderer/renderer.h"
 #include "renderer/descriptor.h"
 #include "renderer/buffer.h"

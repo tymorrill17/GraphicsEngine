@@ -43,6 +43,7 @@ public:
 	inline DescriptorLayoutBuilder& descriptorLayoutBuilder() { return _descriptorLayoutBuilder; }
 	inline DescriptorWriter& descriptorWriter() { return _descriptorWriter; }
 	const inline Allocator& allocator() const { return _allocator; }
+	const inline float aspectRatio() const { return _aspectRatio; }
 
 private:
 	Logger* _logger; // Debug logger
@@ -58,6 +59,8 @@ private:
 	AllocatedImage _drawImage; // Image that gets rendered to then copied to the swapchain image
 	DescriptorLayoutBuilder _descriptorLayoutBuilder; // Builds descriptor set layouts
 	DescriptorWriter _descriptorWriter;
+
+	float _aspectRatio;
 
 	std::vector<RenderSystem*> _renderSystems;
 };

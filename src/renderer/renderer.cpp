@@ -22,6 +22,8 @@ Renderer::Renderer(Window& window) :
 		_frames.emplace_back(std::move(_device));
 	}
 
+	_aspectRatio = float(_window.extent().width) / float(_window.extent().height);
+
 	// Camera data will be sent using a uniform buffer (or push constants... need to refresh my knowledge of them)
 
 	_logger->print("Engine Initiated!");
@@ -128,5 +130,6 @@ void Renderer::resizeCallback() {
 	if (_swapchain.resizeRequested()) {
 		_swapchain.recreate();
 		_drawImage.recreate({ _window.extent().width, _window.extent().height, 1 });
+		_aspectRatio = float(_window.extent().width) / float(_window.extent().height);
 	}
 }
