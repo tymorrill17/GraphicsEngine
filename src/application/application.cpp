@@ -31,9 +31,9 @@ void Application::run() {
 	DescriptorPool globalDescriptorPool(renderer.device(), 10, renderDescriptorSetSizes);
 
 	glm::vec3 particleColor{ 1.0f, 1.0f, 1.0f };
-	float particleRadius = 0.01f;
+	float particleRadius = 0.02f;
 
-	int numParticles = 10000;
+	int numParticles = 1;
 
 	// The particle info struct contains the Particle struct (pos and vel), as well as color and radius of each particle
 	GlobalParticleInfo particleInfo{
@@ -81,10 +81,11 @@ void Application::run() {
 	
 
 	GlobalUBO globalBufferObject{};
+
+	logger.print("Starting the main loop!");
 	
 	// Main application loop
 	while (!window.shouldClose()) {
-
 		timer.update();
 
 		//std::cout << "frameTime: " << timer.frameTime() << std::endl;

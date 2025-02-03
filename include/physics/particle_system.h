@@ -48,4 +48,7 @@ protected:
 
 	// @brief Resolves collisions with the bouding box and between particles
 	void resolveCollisions();
+
+	// @brief applies acceleration due to gravity to the velocities of the particles
+	void applyGravity();
 };

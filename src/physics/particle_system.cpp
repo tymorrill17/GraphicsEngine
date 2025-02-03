@@ -1,6 +1,10 @@
 #include "physics/particle_system.h"
 #include <random>
 
+static float gravity = 9.8f;
+static float collisionDampingFactor = 0.6;
+static glm::vec2 down{ 0.0f, -0.1f };
+
 ParticleSystem2D::ParticleSystem2D(int numParticles, float radius, BoundingBox box) :
 	_numParticles(numParticles),
 	_particleRadius(radius) {
@@ -29,7 +33,7 @@ void ParticleSystem2D::arrangeParticles() {
 		// Arrange the positions of the particles into grids
 		_particles[i].position.x = static_cast<float>((i) % gridSize) * 2.0f * spacing + offset.x;
 		_particles[i].position.y = static_cast<float>((i) / gridSize) * 2.0f * spacing + offset.y;
-		_particles[i].velocity = 0.1f * glm::normalize(glm::vec2{ distribution(generator), distribution(generator) });
+		//_particles[i].velocity = 0.1f * glm::normalize(glm::vec2{ distribution(generator), distribution(generator) });
 	}
 
 	
@@ -38,6 +42,8 @@ void ParticleSystem2D::arrangeParticles() {
 void ParticleSystem2D::update() {
 	
 	static Timer& timer = Timer::getTimer();
+
+	applyGravity();
 
 	// For each particle, apply velocity to position
 	for (int i = 0; i < _numParticles; i++) {
@@ -51,16 +57,27 @@ void ParticleSystem2D::update() {
 void ParticleSystem2D::resolveCollisions() {
 	for (int i = 0; i < _numParticles; i++) {
 		if (_particles[i].position.y < (_bbox.bottom + _particleRadius)) {
-			_particles[i].velocity.y = -_particles[i].velocity.y;
+			_particles[i].position.y = _bbox.bottom + _particleRadius;
+			_particles[i].velocity.y = -_particles[i].velocity.y * collisionDampingFactor;
 		}
 		else if (_particles[i].position.y > (_bbox.top - _particleRadius)) {
-			_particles[i].velocity.y = -_particles[i].velocity.y;
+			_particles[i].position.y = _bbox.top - _particleRadius;
+			_particles[i].velocity.y = -_particles[i].velocity.y * collisionDampingFactor;
 		}
 		if (_particles[i].position.x > (_bbox.right - _particleRadius)) {
-			_particles[i].velocity.x = -_particles[i].velocity.x;
+			_particles[i].position.x = _bbox.right - _particleRadius;
+			_particles[i].velocity.x = -_particles[i].velocity.x * collisionDampingFactor;
 		}
 		else if (_particles[i].position.x < (_bbox.left + _particleRadius)) {
-			_particles[i].velocity.x = -_particles[i].velocity.x;
+			_particles[i].position.x = _bbox.left + _particleRadius;
+			_particles[i].velocity.x = -_particles[i].velocity.x * collisionDampingFactor;
 		}
+	}
+}
+
+void ParticleSystem2D::applyGravity() {
+	static Timer& timer = Timer::getTimer();
+	for (int i = 0; i < _numParticles; i++) {
+		_particles[i].velocity += (gravity * timer.frameTime()) * down;
 	}
 }
