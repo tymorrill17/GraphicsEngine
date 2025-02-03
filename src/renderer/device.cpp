@@ -18,7 +18,7 @@ Device::Device(const Instance& instance, Window& window, const std::vector<const
 	_graphQueue(VK_NULL_HANDLE), 
 	_presQueue(VK_NULL_HANDLE) {
 
-	Logger* logger = Logger::get_logger();
+	static Logger& logger = Logger::getLogger();
 
 	// Create the surface for the passed-in window. I don't necessarily like it being here, but we are keeping window creation separate from the engine, so this has to be here for now.
 	this->_window.create_surface(_instance.handle());
@@ -27,11 +27,11 @@ Device::Device(const Instance& instance, Window& window, const std::vector<const
 	_physDevice = selectPhysicalDevice(_instance.handle(), _window.surface(), extensions);
 	// Queue the physical device properties
 	vkGetPhysicalDeviceProperties(_physDevice, &_physDeviceProperties);
-	logger->log(_physDeviceProperties);
+	logger.log(_physDeviceProperties);
 
 	// Find the queue families and assign their indices
 	_indices = QueueFamily::findQueueFamilies(_physDevice, _window.surface());
-	logger->log(_indices);
+	logger.log(_indices);
 	std::set<uint32_t> uniqueQueueFamilies = { _indices.graphicsFamily.value(), _indices.presentFamily.value() };
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	// Populate queue create infos
@@ -67,7 +67,7 @@ Device::Device(const Instance& instance, Window& window, const std::vector<const
 	if (vkCreateDevice(_physDevice, &deviceCreateInfo, nullptr, &_logicalDevice) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create logical device!");
 	}
-	logger->print("Vulkan device successfully created.");
+	logger.print("Vulkan device successfully created.");
 
 	// Get handles for the graphics and present queues
 	vkGetDeviceQueue(_logicalDevice, _indices.graphicsFamily.value(), 0, &_graphQueue);
@@ -80,7 +80,7 @@ Device::~Device() {
 }
 
 bool Device::checkDeviceExtensionSupport(VkPhysicalDevice physicalDevice, std::vector<const char*>& extensions) {
-	Logger* logger = Logger::get_logger();
+	static Logger& logger = Logger::getLogger();
 
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
@@ -91,8 +91,8 @@ bool Device::checkDeviceExtensionSupport(VkPhysicalDevice physicalDevice, std::v
 	// Get supported extensions
 	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
-	logger->print_extensions("Available Device Extensions:", availableExtensions);
-	logger->print_extensions("Required Device Extensions:", extensions);
+	logger.printExtensions("Available Device Extensions:", availableExtensions);
+	logger.printExtensions("Required Device Extensions:", extensions);
 
 	std::set<std::string> requiredExtensions(extensions.begin(), extensions.end());
 	for (const auto& extension : availableExtensions) {
@@ -100,10 +100,10 @@ bool Device::checkDeviceExtensionSupport(VkPhysicalDevice physicalDevice, std::v
 	}
 
 	if (requiredExtensions.empty()) {
-		logger->print("Required extensions are supported by the physical device!");
+		logger.print("Required extensions are supported by the physical device!");
 		return true;
 	}
-	logger->print("Required extensions are NOT supported, selecting next device...");
+	logger.print("Required extensions are NOT supported, selecting next device...");
 	return false;
 }
 
@@ -122,7 +122,7 @@ bool Device::isDeviceSuitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surf
 }
 
 VkPhysicalDevice Device::selectPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions) {
-	Logger* logger = Logger::get_logger();
+	static Logger& logger = Logger::getLogger();
 
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -130,18 +130,18 @@ VkPhysicalDevice Device::selectPhysicalDevice(VkInstance instance, VkSurfaceKHR 
 	if (deviceCount == 0)
 		throw std::runtime_error("Failed to find any GPU with Vulkan support!");
 
-	logger->print("Selecting physical device...");
+	logger.print("Selecting physical device...");
 
 	// Get available devices
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-	logger->print_devices(devices);
+	logger.printDevices(devices);
 
 	VkPhysicalDevice selectedDevice = VK_NULL_HANDLE;
 	for (const auto& device : devices) {
 		if (isDeviceSuitable(device, surface)) {
 			selectedDevice = device;
-			logger->print("Selected a suitable physical device: ");
+			logger.print("Selected a suitable physical device: ");
 			break;
 		}
 	}

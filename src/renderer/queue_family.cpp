@@ -1,7 +1,7 @@
 #include "renderer/queue_family.h"
 
 QueueFamilyIndices QueueFamily::findQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
-	Logger* logger = Logger::get_logger();
+	static Logger& logger = Logger::getLogger();
 
 	QueueFamilyIndices indices;
 

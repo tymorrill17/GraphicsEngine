@@ -15,7 +15,7 @@ Renderer::Renderer(Window& window) :
 	_descriptorLayoutBuilder(_device),
 	_descriptorWriter(_device) {
 
-	_logger = Logger::get_logger();
+	static Logger& logger = Logger::getLogger();
 
 	_frames.reserve(_swapchain.framesInFlight());
 	for (int i = 0; i < _frames.capacity(); i++) {
@@ -26,7 +26,7 @@ Renderer::Renderer(Window& window) :
 
 	// Camera data will be sent using a uniform buffer (or push constants... need to refresh my knowledge of them)
 
-	_logger->print("Engine Initiated!");
+	logger.print("Engine Initiated!");
 }
 
 static VkRenderingInfoKHR renderingInfoKHR(VkExtent2D extent, uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachmentInfos, VkRenderingAttachmentInfo* pDepthAttachmentInfo) {

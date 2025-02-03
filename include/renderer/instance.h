@@ -27,9 +27,6 @@ public:
 
 private:
 
-	// @brief Debug logger
-	Logger* logger;
-
 	// @brief The Vulkan instance object.
 	VkInstance instance;
 

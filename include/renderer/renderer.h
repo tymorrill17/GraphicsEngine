@@ -46,7 +46,6 @@ public:
 	const inline float aspectRatio() const { return _aspectRatio; }
 
 private:
-	Logger* _logger; // Debug logger
 	Window& _window; // Main window to render to
 	Instance _instance;
 	DebugMessenger _debugMessenger; // Vulkan debug messenger callback for validation layers

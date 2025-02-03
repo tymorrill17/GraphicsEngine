@@ -1,39 +1,27 @@
 #include "logger/logger.h"
 
-Logger* Logger::logger;
+Logger::Logger() : _active(false) {}
 
-void Logger::set_active(bool isActive) {
-	active = isActive;
-}
-
-bool Logger::is_active() const {
-	return active;
-}
-
-Logger* Logger::get_logger() {
-	if (!logger) {
-		logger = new Logger();
-	}
-	return logger;
+Logger& Logger::getLogger() {
+	static Logger instance;
+	return instance;
 }
 
 void Logger::print(std::string message) const {
-	if (!active)
+	if (!_active)
 		return;
 
 	std::cout << message << std::endl;
 }
 
-void Logger::shutdown() {
-	if (logger) {
-		delete logger;
-	}
-}
+void Logger::activate() { _active = true; }
+
+void Logger::deactivate() { _active = false; }
 
 // Extension and Layer reporting
 
-void Logger::print_layers(const char* layerCategory, std::vector<VkLayerProperties>& layers) const {
-	if (!active)
+void Logger::printLayers(const char* layerCategory, std::vector<VkLayerProperties>& layers) const {
+	if (!_active)
 		return;
 
 	std::cout << layerCategory << std::endl;
@@ -41,16 +29,16 @@ void Logger::print_layers(const char* layerCategory, std::vector<VkLayerProperti
 		std::cout << "\t" << layer.layerName << std::endl;
 	}
 }
-void Logger::print_layers(const char* layerCategory, std::vector<const char*>& layers) const {
-	if (!active)
+void Logger::printLayers(const char* layerCategory, std::vector<const char*>& layers) const {
+	if (!_active)
 		return;
 
 	std::cout << layerCategory << std::endl;
-	print_list(layers);
+	printList(layers);
 }
 
-void Logger::print_extensions(const char* extensionCategory, std::vector<VkExtensionProperties>& extensions) const {
-	if (!active)
+void Logger::printExtensions(const char* extensionCategory, std::vector<VkExtensionProperties>& extensions) const {
+	if (!_active)
 		return;
 
 	std::cout << extensionCategory << std::endl;
@@ -58,16 +46,16 @@ void Logger::print_extensions(const char* extensionCategory, std::vector<VkExten
 		std::cout << "\t" << extension.extensionName << std::endl;
 	}
 }
-void Logger::print_extensions(const char* extensionCategory, std::vector<const char*>& extensions) const {
-	if (!active)
+void Logger::printExtensions(const char* extensionCategory, std::vector<const char*>& extensions) const {
+	if (!_active)
 		return;
 
 	std::cout << extensionCategory << std::endl;
-	print_list(extensions);
+	printList(extensions);
 }
 
-void Logger::print_list(std::vector<const char*>& list) const {
-	if (!active)
+void Logger::printList(std::vector<const char*>& list) const {
+	if (!_active)
 		return;
 
 	for (const auto& member : list) {
@@ -77,8 +65,8 @@ void Logger::print_list(std::vector<const char*>& list) const {
 
 // Version reporting
 
-void Logger::report_version(uint32_t version) const {
-	if (!active)
+void Logger::reportVersion(uint32_t version) const {
+	if (!_active)
 		return;
 
 	std::cout << "Engine using Vulkan Variant: " << VK_API_VERSION_VARIANT(version)
@@ -88,12 +76,12 @@ void Logger::report_version(uint32_t version) const {
 }
 
 void Logger::log(struct QueueFamilyIndices& indices) const {
-	if (!active)
+	if (!_active)
 		return;
 
 	std::cout << "There are " << indices.queueFamilyProperties.size() << " queue families in the GPU." << std::endl;
 	for (uint32_t i = 0; i < indices.queueFamilyProperties.size(); i++) {
-		auto family = indices.queueFamilyProperties[i];
+		VkQueueFamilyProperties family = indices.queueFamilyProperties[i];
 		std::cout << "Queue Family (" << i << "):" << std::endl;
 		std::cout << "\tSupports " << family.queueFlags << std::endl;
 		std::cout << "\tHas " << family.queueCount << " queues" << std::endl;
@@ -108,7 +96,7 @@ void Logger::log(struct QueueFamilyIndices& indices) const {
  }
 
 void Logger::log(VkPhysicalDeviceProperties& physdevice) const {
-	if (!active)
+	if (!_active)
 		return;
 
 	std::cout << "Device name: " << physdevice.deviceName << std::endl;
@@ -132,8 +120,8 @@ void Logger::log(VkPhysicalDeviceProperties& physdevice) const {
 	std::cout << std::endl;
 }
 
-void Logger::print_devices(std::vector<VkPhysicalDevice>& devices) const {
-	if (!active)
+void Logger::printDevices(std::vector<VkPhysicalDevice>& devices) const {
+	if (!_active)
 		return;
 
 	std::cout << "List of physical devices: " << std::endl;

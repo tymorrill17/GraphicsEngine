@@ -44,7 +44,7 @@ void ParticleRenderSystem::render() {
 	// Bind pipelines and draw here
 	vkCmdBindPipeline(cmd.buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline.pipeline()); // Bind pipeline
 
-	vkCmdBindDescriptorSets(cmd.buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline.pipelineLayout(), 0, _particleSet.size(), _particleSet.data(), 0, nullptr);
+	vkCmdBindDescriptorSets(cmd.buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline.pipelineLayout(), 0, static_cast<uint32_t>(_particleSet.size()), _particleSet.data(), 0, nullptr);
 
 	vkCmdDraw(cmd.buffer(), 6 * _numParticles, 1, 0, 0);
 }

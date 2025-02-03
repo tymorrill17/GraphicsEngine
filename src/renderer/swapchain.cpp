@@ -1,7 +1,7 @@
 #include "renderer/swapchain.h"
 
 void Swapchain::createSwapchain() {
-	Logger* logger = Logger::get_logger();
+	static Logger& logger = Logger::getLogger();
 
 	// Query swapchain support details and set the extent to the same as the window
 	_supportDetails = querySwapchainSupport(_device.physicalDevice(), _window.surface());
@@ -55,7 +55,7 @@ void Swapchain::createSwapchain() {
 		throw std::runtime_error("Failed to create swapchain!");
 	}
 
-	logger->print("Swapchain successfully created!");
+	logger.print("Swapchain successfully created!");
 
 	std::vector<VkImage> images;
 	// Get the new swapchain's images

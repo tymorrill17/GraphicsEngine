@@ -3,6 +3,7 @@
 #include "NonCopyable.h"
 #include "utility/window.h"
 #include "utility/camera.h"
+#include "utility/timer.h"
 #include "renderer/renderer.h"
 #include "renderer/descriptor.h"
 #include "renderer/buffer.h"
@@ -32,6 +33,4 @@ private:
 	// @brief The graphics engine that manages drawing and rendering tasks
 	Renderer renderer;
 	// @brief Debug logger
-	Logger* logger;
-
 };

@@ -9,7 +9,7 @@ Window::Window(glm::ivec2 dimensions, const std::string& name) :
 	_pauseRendering(false),
 	_isFullscreen(false) {
 
-	Logger* logger = Logger::get_logger();
+	static Logger& logger = Logger::getLogger();
 	// Initialize SDL
 	SDL_Init(SDL_INIT_VIDEO);
 
@@ -27,7 +27,7 @@ Window::Window(glm::ivec2 dimensions, const std::string& name) :
 	if (window) {
 		std::stringstream line;
 		line << "Created a window titled \"" << name << "\" of size " << _windowExtent.width << "x" << _windowExtent.height << ".";
-		logger->print(line.str());
+		logger.print(line.str());
 	}
 	else {
 		throw std::runtime_error("Window creation failure!");
@@ -119,7 +119,7 @@ void Window::updateSize() {
 }
 
 void Window::create_surface(VkInstance instance) {
-	Logger* logger = Logger::get_logger();
+	static Logger& logger = Logger::getLogger();
 
 	_instance = instance;
 
@@ -127,5 +127,5 @@ void Window::create_surface(VkInstance instance) {
 		throw std::runtime_error("Failed to create window surface!");
 	}
 
-	logger->print("Created SDL window surface for Vulkan");
+	logger.print("Created SDL window surface for Vulkan");
 }

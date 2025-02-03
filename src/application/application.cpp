@@ -15,11 +15,7 @@ static std::vector<PoolSizeRatio> computeDescriptorSetSizes = {
 
 Application::Application() : 
 	window({ APPLICATION_WIDTH, APPLICATION_HEIGHT }, "VulkanEngineV2"),
-	renderer(window) {
-
-	// Get static logger
-	logger = Logger::get_logger();
-}
+	renderer(window) {}
 
 struct GlobalUBO {
 	glm::mat4 projection;
@@ -28,13 +24,16 @@ struct GlobalUBO {
 };
 
 void Application::run() {
+	static Logger& logger = Logger::getLogger();
+	static Timer& timer = Timer::getTimer();
+
 	// Initialize the descriptor pool
 	DescriptorPool globalDescriptorPool(renderer.device(), 10, renderDescriptorSetSizes);
 
 	glm::vec3 particleColor{ 1.0f, 1.0f, 1.0f };
-	float particleRadius = 0.5f;
+	float particleRadius = 0.01f;
 
-	int numParticles = 1;
+	int numParticles = 10000;
 
 	// The particle info struct contains the Particle struct (pos and vel), as well as color and radius of each particle
 	GlobalParticleInfo particleInfo{
@@ -42,8 +41,10 @@ void Application::run() {
 	.radius = particleRadius
 	};
 
+	BoundingBox box{};
+
 	// The constructor of the particle system initializes the positions of the particles to a grid
-	ParticleSystem2D fluidParticles(numParticles, particleRadius);
+	ParticleSystem2D fluidParticles(numParticles, particleRadius, box);
 
 	// We will use a uniform buffer for the global particle info 
 	Buffer globalParticleBuffer(renderer.device(), renderer.allocator(), sizeof(GlobalParticleInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, renderer.device().physicalDeviceProperies().limits.minUniformBufferOffsetAlignment);
@@ -77,11 +78,18 @@ void Application::run() {
 
 	// Set up the camera
 	Camera camera{};
+	
 
 	GlobalUBO globalBufferObject{};
 	
 	// Main application loop
 	while (!window.shouldClose()) {
+
+		timer.update();
+
+		//std::cout << "frameTime: " << timer.frameTime() << std::endl;
+		//std::cout << "FPS: " << timer.framesPerSecond() << std::endl;
+
 		window.process_inputs(); // Poll the user inputs
 		if (window.pauseRendering()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -90,7 +98,9 @@ void Application::run() {
 
 		// Set the camera projection with the current aspect ratio
 		float aspect = renderer.aspectRatio();
-		camera.setOrthographicProjection(-aspect, aspect, -1.0f, 1.0f, 0.1f, 10.0f);
+		box.left = -aspect; box.right = aspect; box.bottom = -1.0f; box.top = 1.0f;
+		//camera.setOrthographicProjection(-aspect, aspect, -1.0f, 1.0f, 0.1f, 10.0f);
+		camera.setOrthographicProjection(box.left, box.right, box.bottom, box.top, 0.1f, 10.0f);
 		camera.setViewDirection(glm::vec3{ 0.0f, 0.0f, 2.0f }, glm::vec3{ 0.0f, 0.0f, -1.0f });
 
 		// Update camera info in the global buffer
@@ -98,7 +108,9 @@ void Application::run() {
 		globalBufferObject.projection = camera.projectionMatrix();
 		globalBufferObject.view = camera.viewMatrix();
 
-		//particleSystem.update(); // Update the particle systems
+		fluidParticles.setBoundingBox(box);
+		fluidParticles.update(); // Update the particle systems
+		//fluidParticles.arrangeParticles();
 
 		// Update/fill buffers
 		globalBuffer.writeBuffer(&globalBufferObject);
@@ -111,5 +123,5 @@ void Application::run() {
 	}
 
 	// TODO: Make sure the engine waits for all fences before quitting. Currently it is exiting in the middle of a render and throwing a validation warning
-	logger->print("Shutting Down... Bye Bye!");
+	logger.print("Shutting Down... Bye Bye!");
 }

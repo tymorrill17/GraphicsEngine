@@ -5,7 +5,7 @@ PipelineBuilder::PipelineBuilder(const Device& device) : _device(device) {
 }
 
 Pipeline PipelineBuilder::buildPipeline() {
-    Logger* logger = Logger::get_logger();
+    static Logger& logger = Logger::getLogger();
 
     if (pipelineLayout == VK_NULL_HANDLE) {
         throw std::runtime_error("No pipeline layout fouund! Please include a pipeline layout to the pipeline builder!");
@@ -65,7 +65,7 @@ Pipeline PipelineBuilder::buildPipeline() {
     }
 
     Pipeline newPipeline(&_device, vkPipeline, pipelineLayout);
-    logger->print("Successfully Created Render Pipeline");
+    logger.print("Successfully Created Render Pipeline");
 
     return newPipeline;
 }
