@@ -8,6 +8,10 @@
 #include "NonCopyable.h"
 #include <string>
 #include <vector>
+#include "imgui.h"
+#include "imgui_impl_sdl2.h"
+#include "imgui_impl_vulkan.h"
+#include <sstream>
 
 // @brief Contains the window that will display the application
 class Window : public NonCopyable {
@@ -28,12 +32,15 @@ public:
 	inline const struct SDL_Window* SDL_window() const { return _window; }
 	inline struct SDL_Window* SDL_window() { return _window; }
 	inline VkSurfaceKHR surface() const { return _surface; }
-	inline bool shouldClose() const { return _windowShouldClose; }
-	inline bool pauseRendering() const { return _pauseRendering; }
-	inline bool isFullscreen() const { return _isFullscreen; }
 
-	// @brief Processes SDL inputs and delegates actions relating to window behavior
-	void process_inputs();
+	inline bool shouldClose() const { return _windowShouldClose; }
+	void closeWindow() { _windowShouldClose = true; }
+
+	inline bool pauseRendering() const { return _pauseRendering; }
+	inline void setPauseRendering(bool value) { _pauseRendering = value; }
+	
+	inline bool isFullscreen() const { return _isFullscreen; }
+	inline void setFullscreen(bool value) { _isFullscreen = value; }
 
 	// @brief Gets the current window size after resizing
 	void updateSize();
@@ -46,7 +53,7 @@ public:
 	// @brief Create the Vulkan surface that will communicate with the SDL window. Also sets the Instance pointer member in the Window object. Called in Device constructor
 	//
 	// @param instance - Vulkan instance to connect the surface with
-	void create_surface(VkInstance instance);
+	void createSurface(VkInstance instance);
 
 private:
 	struct SDL_Window* _window;

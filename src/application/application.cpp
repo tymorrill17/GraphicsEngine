@@ -1,21 +1,9 @@
 #include "application/application.h"
 
-
-
-static std::vector<PoolSizeRatio> renderDescriptorSetSizes = {
-	{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
-	//{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10},
-	{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10},
-	//{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10}
-};
-
-static std::vector<PoolSizeRatio> computeDescriptorSetSizes = {
-	{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}
-};
-
 Application::Application() : 
 	window({ APPLICATION_WIDTH, APPLICATION_HEIGHT }, "VulkanEngineV2"),
-	renderer(window) {}
+	renderer(window),
+	inputManager(window) {}
 
 struct GlobalUBO {
 	glm::mat4 projection;
@@ -26,25 +14,38 @@ struct GlobalUBO {
 void Application::run() {
 	static Logger& logger = Logger::getLogger();
 	static Timer& timer = Timer::getTimer();
+	static Gui& gui = Gui::getGui();
 
 	// Initialize the descriptor pool
+	std::vector<PoolSizeRatio> renderDescriptorSetSizes = {
+		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
+		//{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10},
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10},
+		//{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10}
+	};
+	static std::vector<PoolSizeRatio> computeDescriptorSetSizes = {
+		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}
+	};
 	DescriptorPool globalDescriptorPool(renderer.device(), 10, renderDescriptorSetSizes);
 
-	glm::vec3 particleColor{ 1.0f, 1.0f, 1.0f };
-	float particleRadius = 0.02f;
-
-	int numParticles = 1;
+	//glm::vec4 particleColor = glm::vec4{ glm::normalize(glm::vec3{ 25.0f, 118.0f, 210.0f }), 1.0f };
+	static float particleColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	static float particleRadius = 0.02f;
+	static float particleSpacing = 0.0f;
+	static int numParticles = 1000;
 
 	// The particle info struct contains the Particle struct (pos and vel), as well as color and radius of each particle
 	GlobalParticleInfo particleInfo{
-	.defaultColor = particleColor,
-	.radius = particleRadius
+	.defaultColor = glm::vec4{ particleColor[0], particleColor[1], particleColor[2], particleColor[3] },
+	.radius = particleRadius,
+	.spacing = particleSpacing,
+	.numParticles = numParticles
 	};
 
 	BoundingBox box{};
 
 	// The constructor of the particle system initializes the positions of the particles to a grid
-	ParticleSystem2D fluidParticles(numParticles, particleRadius, box);
+	ParticleSystem2D fluidParticles(particleInfo, box);
 
 	// We will use a uniform buffer for the global particle info 
 	Buffer globalParticleBuffer(renderer.device(), renderer.allocator(), sizeof(GlobalParticleInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, renderer.device().physicalDeviceProperies().limits.minUniformBufferOffsetAlignment);
@@ -73,25 +74,55 @@ void Application::run() {
 	renderer.descriptorWriter().writeBuffer(0, globalBuffer, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER).updateDescriptorSet(globalDescriptor);
 
 	// Create the render systems and add them to the renderer
-	ParticleRenderSystem particleRenderSystem(renderer, std::vector<VkDescriptorSetLayout>{particleLayouts,globalLayout}, std::vector<VkDescriptorSet>{particleDescriptor, globalDescriptor}, numParticles);
+	ParticleRenderSystem particleRenderSystem(renderer, std::vector<VkDescriptorSetLayout>{particleLayouts, globalLayout}, std::vector<VkDescriptorSet>{particleDescriptor, globalDescriptor}, fluidParticles);
 	renderer.addRenderSystem(&particleRenderSystem);
 
 	// Set up the camera
 	Camera camera{};
-	
 
 	GlobalUBO globalBufferObject{};
 
+	GuiRenderSystem guiRenderSystem(renderer, window);
+	renderer.addRenderSystem(&guiRenderSystem);
+
 	logger.print("Starting the main loop!");
-	
+
+	// Start physics when this becomes true;
+	static bool letThereBeLight = false;
+
 	// Main application loop
 	while (!window.shouldClose()) {
 		timer.update();
+		guiRenderSystem.getNewFrame();
+
+		// Timer Info Display
+		gui.addWidget("Info", []() {
+			ImGui::Text("FrameTime: %.8f ms", timer.frameTime());
+			ImGui::Text("FPS: %.2f", timer.framesPerSecond());
+		});
+
+		gui.addWidget("Controls", []() {
+			if (ImGui::Button("Start")) {
+				letThereBeLight = true;
+			}
+			if (ImGui::Button("Reset")) {
+				letThereBeLight = false;
+			}
+		});
+
+		// Particle Info Display
+		gui.addWidget("Particle Info", []() {
+			ImGui::DragFloat("Radius", &particleRadius, 0.001, 0.0f, 1000000.0f);
+			ImGui::DragFloat("Spacing", &particleSpacing, 0.001, 0.0f, 1000000.0f);
+			ImGui::DragInt("# Particles", &numParticles, 1, 0, INT_MAX);
+			ImGui::ColorEdit4("Default Color", particleColor);
+		});
 
 		//std::cout << "frameTime: " << timer.frameTime() << std::endl;
 		//std::cout << "FPS: " << timer.framesPerSecond() << std::endl;
 
-		window.process_inputs(); // Poll the user inputs
+
+		inputManager.processInputs(); // Poll the user inputs
 		if (window.pauseRendering()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
@@ -109,9 +140,18 @@ void Application::run() {
 		globalBufferObject.projection = camera.projectionMatrix();
 		globalBufferObject.view = camera.viewMatrix();
 
+		particleInfo.defaultColor = glm::vec4{ particleColor[0], particleColor[1], particleColor[2], particleColor[3] };
+		particleInfo.numParticles = numParticles;
+		particleInfo.radius = particleRadius;
+		particleInfo.spacing = particleSpacing;
+
 		fluidParticles.setBoundingBox(box);
-		fluidParticles.update(); // Update the particle systems
-		//fluidParticles.arrangeParticles();
+		fluidParticles.setParticleInfo(particleInfo);
+		if (letThereBeLight) {
+			fluidParticles.update(); // Update the particle systems
+		} else {
+			fluidParticles.arrangeParticles();
+		}
 
 		// Update/fill buffers
 		globalBuffer.writeBuffer(&globalBufferObject);
@@ -124,5 +164,10 @@ void Application::run() {
 	}
 
 	// TODO: Make sure the engine waits for all fences before quitting. Currently it is exiting in the middle of a render and throwing a validation warning
+	for (uint32_t i = 0; i < renderer.swapchain().framesInFlight(); i++) {
+		VkFence endFence = renderer.getFrame(i).renderFence().handle();
+		vkWaitForFences(renderer.device().device(), 1, &endFence, true, 10000000);
+	}
+
 	logger.print("Shutting Down... Bye Bye!");
 }

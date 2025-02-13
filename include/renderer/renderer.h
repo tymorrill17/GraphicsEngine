@@ -37,8 +37,11 @@ public:
 	// @brief Gets the current frame by finding frameNumber % swapchain.framesInFlight
 	Frame& getCurrentFrame();
 
+	Frame& getFrame(int index);
+
 	const inline Device& device() const { return _device; }
 	inline Swapchain& swapchain() { return _swapchain; }
+	inline Instance& instance() { return _instance; }
 	inline PipelineBuilder& pipelineBuilder() { return _pipelineBuilder; }
 	inline DescriptorLayoutBuilder& descriptorLayoutBuilder() { return _descriptorLayoutBuilder; }
 	inline DescriptorWriter& descriptorWriter() { return _descriptorWriter; }

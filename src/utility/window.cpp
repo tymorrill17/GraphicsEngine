@@ -1,5 +1,4 @@
 #include "utility/window.h"
-#include <sstream>
 
 Window::Window(glm::ivec2 dimensions, const std::string& name) :
 	_windowExtent{ static_cast<uint32_t>(dimensions.x), static_cast<uint32_t>(dimensions.y) },
@@ -14,7 +13,7 @@ Window::Window(glm::ivec2 dimensions, const std::string& name) :
 	SDL_Init(SDL_INIT_VIDEO);
 
 	// Create a window compatible with Vulkan surfaces
-	SDL_WindowFlags windowFlags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+	SDL_WindowFlags windowFlags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 	struct SDL_Window* window = SDL_CreateWindow(
 		name.c_str(),
 		SDL_WINDOWPOS_UNDEFINED,
@@ -64,53 +63,6 @@ void Window::getRequiredInstanceExtensions(std::vector<const char*>& extensions)
 	extensions.assign(sdlRequiredExtensions.data(), sdlRequiredExtensions.data() + sdlRequiredExtensionCount);
 }
 
-void Window::process_inputs() {
-	SDL_Event e;
-	//Handle events on queue
-	while (SDL_PollEvent(&e) != 0) {
-		//close the window when user alt-f4s or clicks the X button			
-		switch (e.type) {
-		case SDL_QUIT:
-			_windowShouldClose = true;
-			break;
-		case SDL_WINDOWEVENT:
-			switch (e.window.event) {
-			case SDL_WINDOWEVENT_MINIMIZED:
-				_pauseRendering = true;
-				break;
-			case SDL_WINDOWEVENT_RESTORED:
-				_pauseRendering = false;
-				break;
-			}
-			break;
-		case SDL_KEYDOWN:
-			switch (e.key.keysym.sym) {
-			case SDLK_F11:
-				if (_isFullscreen) {
-					SDL_SetWindowFullscreen(_window, 0);
-					_isFullscreen = false;
-				}
-				else {
-					SDL_SetWindowFullscreen(_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-					_isFullscreen = true;
-				}
-				break;
-			default:
-				break;
-			}
-			break;
-		case SDL_KEYUP:
-			switch (e.key.keysym.sym) {
-			default:
-				break;
-			}
-			break;
-		default:
-			break;
-		}
-	}
-}
-
 void Window::updateSize() {
 	int width, height;
 	SDL_GetWindowSize(_window, &width, &height);
@@ -118,7 +70,7 @@ void Window::updateSize() {
 	_windowExtent.height = height;
 }
 
-void Window::create_surface(VkInstance instance) {
+void Window::createSurface(VkInstance instance) {
 	static Logger& logger = Logger::getLogger();
 
 	_instance = instance;

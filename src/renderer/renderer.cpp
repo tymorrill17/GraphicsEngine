@@ -47,6 +47,10 @@ Frame& Renderer::getCurrentFrame() {
 	return _frames[_frameNumber % _swapchain.framesInFlight()];
 }
 
+Frame& Renderer::getFrame(int index) {
+	return _frames[index];
+}
+
 Renderer& Renderer::addRenderSystem(RenderSystem* renderSystem) {
 	_renderSystems.push_back(renderSystem);
 	return *this;
@@ -103,7 +107,7 @@ void Renderer::renderAll() {
 
 	// Call render() for each RenderSystem. Note that the order in which these systems are called matters.
 	for (auto* renderSystem : _renderSystems) {
-		renderSystem->render();
+		renderSystem->render(cmd);
 	}
 
 	vkCmdEndRendering(cmd.buffer());

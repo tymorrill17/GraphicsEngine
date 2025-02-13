@@ -4,12 +4,15 @@
 #include "utility/window.h"
 #include "utility/camera.h"
 #include "utility/timer.h"
+#include "utility/gui.h"
+#include "utility/input_manager.h"
 #include "renderer/renderer.h"
 #include "renderer/descriptor.h"
 #include "renderer/buffer.h"
 #include "physics/particle_system.h"
 #include "systems/particle_render_system.h"
 #include "systems/render_system.h"
+#include "systems/gui_render_system.h"
 #include <thread>
 #include <chrono>
 
@@ -32,5 +35,5 @@ private:
 	Window window;
 	// @brief The graphics engine that manages drawing and rendering tasks
 	Renderer renderer;
-	// @brief Debug logger
+	InputManager inputManager;
 };

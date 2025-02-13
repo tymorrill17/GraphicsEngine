@@ -1,7 +1,12 @@
 #include "renderer/command.h"
 #include "renderer/frame.h"
 
-Command::Command(const Device& device, VkCommandPoolCreateFlags flags) : _device(device), _commandPool(VK_NULL_HANDLE), _commandBuffer(VK_NULL_HANDLE), _flags(flags) {
+Command::Command(const Device& device, VkCommandPoolCreateFlags flags) : 
+	_device(device), 
+	_commandPool(VK_NULL_HANDLE), 
+	_commandBuffer(VK_NULL_HANDLE), 
+	_flags(flags),
+	_inProgress(false) {
 
 	// First, create the command pool
 	VkCommandPoolCreateInfo commandPoolCreateInfo{
@@ -45,17 +50,25 @@ VkCommandBufferBeginInfo Command::commandBufferBeginInfo(VkCommandBufferUsageFla
 	return beginInfo;
 }
 
-void Command::begin() const {
+void Command::begin() {
+	if (_inProgress) {
+		throw std::runtime_error("Command buffer already begun!");
+	}
 	VkCommandBufferBeginInfo beginInfo = commandBufferBeginInfo();
 	if (vkBeginCommandBuffer(_commandBuffer, &beginInfo) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to begin command buffer!");
 	}
+	_inProgress = true;
 }
 
-void Command::end() const {
+void Command::end() {
+	if (!_inProgress) {
+		throw std::runtime_error("Can't end a command buffer that has not begun!");
+	}
 	if (vkEndCommandBuffer(_commandBuffer) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to end command buffer!");
 	}
+	_inProgress = false;
 }
 
 void Command::reset(VkCommandBufferResetFlags flags) const {
@@ -132,4 +145,47 @@ Command& Command::operator=(Command&& other) noexcept {
 
 void Command::cleanup() {
 	vkDestroyCommandPool(_device.device(), _commandPool, nullptr);
+}
+
+ImmediateCommand::ImmediateCommand(const Device& device, VkCommandPoolCreateFlags flags) : 
+	Command(device, flags), 
+	_submitFence(device, VK_FENCE_CREATE_SIGNALED_BIT) {}
+
+void ImmediateCommand::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) {
+	VkFence fence = _submitFence.handle();
+	vkResetFences(_device.device(), 1, &fence);
+	reset(); // Reset the command buffer
+
+	begin();
+
+	function(_commandBuffer);
+
+	end();
+	submitToQueue(_device.graphicsQueue());
+	vkWaitForFences(_device.device(), 1, &fence, true, 9999999999);
+}
+
+void ImmediateCommand::submitToQueue(VkQueue queue) {
+	VkCommandBufferSubmitInfo cmdSubmitInfo{
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+		.pNext = nullptr,
+		.commandBuffer = _commandBuffer,
+		.deviceMask = 0
+	};
+	// This semaphore waits until the previous frame has been presented
+
+	VkSubmitInfo2 submitInfo{
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+		.pNext = nullptr,
+		.waitSemaphoreInfoCount = 1,
+		.pWaitSemaphoreInfos = nullptr,
+		.commandBufferInfoCount = 1,
+		.pCommandBufferInfos = &cmdSubmitInfo,
+		.signalSemaphoreInfoCount = 1,
+		.pSignalSemaphoreInfos = nullptr
+	};
+
+	if (vkQueueSubmit2(queue, 1, &submitInfo, _submitFence.handle()) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to submit commands to queue!");
+	}
 }

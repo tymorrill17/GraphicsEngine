@@ -21,7 +21,7 @@ Device::Device(const Instance& instance, Window& window, const std::vector<const
 	static Logger& logger = Logger::getLogger();
 
 	// Create the surface for the passed-in window. I don't necessarily like it being here, but we are keeping window creation separate from the engine, so this has to be here for now.
-	this->_window.create_surface(_instance.handle());
+	_window.createSurface(_instance.handle());
 
 	// Select the physical device to be used for rendering
 	_physDevice = selectPhysicalDevice(_instance.handle(), _window.surface(), extensions);

@@ -14,8 +14,10 @@ struct BoundingBox {
 };
 
 struct GlobalParticleInfo {
-	glm::vec3 defaultColor;
+	glm::vec4 defaultColor;
 	float radius;
+	float spacing;
+	int numParticles;
 };
 
 struct Particle2D {
@@ -26,7 +28,7 @@ struct Particle2D {
 
 class ParticleSystem2D : public NonCopyable {
 public:
-	ParticleSystem2D(const int numParticles, const float radius, BoundingBox box);
+	ParticleSystem2D(GlobalParticleInfo globalInfo, BoundingBox box);
 	~ParticleSystem2D();
 
 	// @brief initialize the particles in a grid
@@ -35,16 +37,16 @@ public:
 	void update();
 
 	void setBoundingBox(BoundingBox box) { _bbox = box; }
+	void setParticleInfo(GlobalParticleInfo particleInfo) { _globalInfo = particleInfo; }
 
-	Particle2D* particles() {
-		return _particles;
-	}
+	Particle2D* particles() { return _particles; }
+	GlobalParticleInfo& particleInfo() { return _globalInfo; }
 
 protected:
-	int _numParticles;
-	float _particleRadius;
 	Particle2D* _particles; // Array of 2D particles
 	BoundingBox _bbox;
+	GlobalParticleInfo _globalInfo;
+
 
 	// @brief Resolves collisions with the bouding box and between particles
 	void resolveCollisions();

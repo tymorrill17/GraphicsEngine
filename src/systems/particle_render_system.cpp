@@ -28,23 +28,21 @@ void ParticleRenderSystem::buildPipeline() {
 	_pipeline = _renderer.pipelineBuilder().buildPipeline();
 }
 
-ParticleRenderSystem::ParticleRenderSystem(Renderer& renderer, std::vector<VkDescriptorSetLayout> particleDescriptorLayout, std::vector<VkDescriptorSet> particleDescriptorSets, int numParticles) :
+ParticleRenderSystem::ParticleRenderSystem(Renderer& renderer, std::vector<VkDescriptorSetLayout> particleDescriptorLayout, std::vector<VkDescriptorSet> particleDescriptorSets, ParticleSystem2D& particleSystem) :
 	_renderer(renderer), 
 	_particleDescriptors(particleDescriptorLayout),
 	_particleSet(particleDescriptorSets),
-	_numParticles(numParticles) {
+	_particleSystem(particleSystem) {
 
 	buildPipeline();
 }
 
-void ParticleRenderSystem::render() {
-	// Get the current frame's command buffer
-	Command& cmd = _renderer.getCurrentFrame().command();
+void ParticleRenderSystem::render(Command& cmd) {
 
 	// Bind pipelines and draw here
 	vkCmdBindPipeline(cmd.buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline.pipeline()); // Bind pipeline
 
 	vkCmdBindDescriptorSets(cmd.buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline.pipelineLayout(), 0, static_cast<uint32_t>(_particleSet.size()), _particleSet.data(), 0, nullptr);
 
-	vkCmdDraw(cmd.buffer(), 6 * _numParticles, 1, 0, 0);
+	vkCmdDraw(cmd.buffer(), 6*_particleSystem.particleInfo().numParticles, 1, 0, 0);
 }

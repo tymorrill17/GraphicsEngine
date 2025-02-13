@@ -1,6 +1,8 @@
 #pragma once
 #include "vulkan/vulkan.h"
+#include "renderer/sync.h"
 #include "NonCopyable.h"
+#include <functional>
 
 class Device;
 class Frame;
@@ -23,9 +25,9 @@ public:
 	void resetCommandPool();
 
 	// @brief Begins the command buffer. Don't forget to end the command buffer too
-	void begin() const;
+	void begin();
 	// @brief Ends the command buffer. This shouldn't be called unless the command buffer has been begun
-	void end() const;
+	void end();
 	// @brief Resets the command buffer. Not to be confused with resetting the command pool
 	void reset(VkCommandBufferResetFlags flags = 0) const;
 
@@ -38,7 +40,7 @@ public:
 	// @brief Populates a command buffer begin info struct
 	static VkCommandBufferBeginInfo commandBufferBeginInfo(VkCommandBufferUsageFlags flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-private:
+protected:
 
 	void cleanup(); 
 
@@ -47,4 +49,21 @@ private:
 	VkCommandPool _commandPool;
 	VkCommandBuffer _commandBuffer;
 	VkCommandPoolCreateFlags _flags;
+	bool _inProgress;
+};
+
+class ImmediateCommand : public Command {
+public:
+	ImmediateCommand(const Device& device, VkCommandPoolCreateFlags flags);
+
+	inline Fence& fence() { return _submitFence; }
+
+	// Submit the immediate command to the queue
+	void submitToQueue(VkQueue queue);
+
+	// @brief Immediately submit a command to the graphics queue
+	void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
+
+private:
+	Fence _submitFence;
 };

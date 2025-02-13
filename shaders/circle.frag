@@ -4,22 +4,20 @@ layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec2 fragOffset;
 layout (location = 0) out vec4 outColor;
 
-const int MAX_PARTICLES = 100000;
-const int NUM_PARTICLES = 1;
-
 struct Particle2D {
 	vec2 position;
 	vec2 velocity;
-	vec3 color;
+	vec4 color;
 };
 
 layout (set = 0, binding = 0) uniform GlobalParticleInfo {
-	vec3 defaultColor;
+	vec4 defaultColor;
 	float radius;
+	int numParticles;
 } globalParticleInfo;
 
 layout (set = 0, binding = 1) readonly buffer ParticleData {
-	Particle2D particles[MAX_PARTICLES];
+	Particle2D particles[];
 } particleData;
 
 void main() 
@@ -27,7 +25,7 @@ void main()
 	float dist = dot(fragOffset,fragOffset);
 	float radiusSquared = globalParticleInfo.radius * globalParticleInfo.radius;
 
+	outColor = fragColor;
 	if (dist > 1) discard;
 
-	outColor = fragColor;
 }
