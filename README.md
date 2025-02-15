@@ -12,7 +12,7 @@ they are needed in side projects.
 
 ## Projects On My Radar:
 ### Physics Simulations
-* Fluid Simulation (2D and 3D)
+* [Fluid Simulation](docs/FluidSimulation.md) (2D and 3D)
 * Rigid-Body Physics Engine
 * Soft-Body Simulation
 * Cloth Simulation
