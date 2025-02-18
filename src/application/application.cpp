@@ -29,10 +29,10 @@ void Application::run() {
 	DescriptorPool globalDescriptorPool(renderer.device(), 10, renderDescriptorSetSizes);
 
 	//glm::vec4 particleColor = glm::vec4{ glm::normalize(glm::vec3{ 25.0f, 118.0f, 210.0f }), 1.0f };
-	static float particleColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	static float particleRadius = 0.02f;
-	static float particleSpacing = 0.0f;
-	static int numParticles = 1000;
+	float particleColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	float particleRadius = 0.02f;
+	float particleSpacing = 0.0f;
+	int numParticles = 306;
 
 	// The particle info struct contains the Particle struct (pos and vel), as well as color and radius of each particle
 	GlobalParticleInfo particleInfo{
@@ -42,10 +42,26 @@ void Application::run() {
 	.numParticles = numParticles
 	};
 
+	float boundaryDamping = 0.9f;
+	float collisionDamping = 0.9f;
+	float gravity = 9.8f;
+	int nSimulationSubsteps = 8;
+
+	GlobalPhysicsInfo physicsInfo{
+		.gravity = gravity,
+		.boundaryDampingFactor = boundaryDamping,
+		.collisionDampingFactor = collisionDamping,
+		.nSubsteps = nSimulationSubsteps,
+	};
+
 	BoundingBox box{};
 
+	float handRadius = 0.1f;
+	float interactionStrength = 0.5f;
+	Hand mouseInteraction(handRadius, interactionStrength);
+
 	// The constructor of the particle system initializes the positions of the particles to a grid
-	ParticleSystem2D fluidParticles(particleInfo, box);
+	ParticleSystem2D fluidParticles(particleInfo, physicsInfo, box);
 
 	// We will use a uniform buffer for the global particle info 
 	Buffer globalParticleBuffer(renderer.device(), renderer.allocator(), sizeof(GlobalParticleInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, renderer.device().physicalDeviceProperies().limits.minUniformBufferOffsetAlignment);
@@ -88,7 +104,8 @@ void Application::run() {
 	logger.print("Starting the main loop!");
 
 	// Start physics when this becomes true;
-	static bool letThereBeLight = false;
+	bool letThereBeLight = false;
+	glm::vec2 mousePosition;
 
 	// Main application loop
 	while (!window.shouldClose()) {
@@ -96,12 +113,13 @@ void Application::run() {
 		guiRenderSystem.getNewFrame();
 
 		// Timer Info Display
-		gui.addWidget("Info", []() {
+		gui.addWidget("Info", [&]() {
 			ImGui::Text("FrameTime: %.8f ms", timer.frameTime());
 			ImGui::Text("FPS: %.2f", timer.framesPerSecond());
+			ImGui::Text("Mouse Position: (%.2f, %.2f)", mousePosition.x, mousePosition.y);
 		});
 
-		gui.addWidget("Controls", []() {
+		gui.addWidget("Controls", [&]() {
 			if (ImGui::Button("Start")) {
 				letThereBeLight = true;
 			}
@@ -111,22 +129,33 @@ void Application::run() {
 		});
 
 		// Particle Info Display
-		gui.addWidget("Particle Info", []() {
+		gui.addWidget("Particle Info", [&]() {
 			ImGui::DragFloat("Radius", &particleRadius, 0.001, 0.0f, 1000000.0f);
 			ImGui::DragFloat("Spacing", &particleSpacing, 0.001, 0.0f, 1000000.0f);
-			ImGui::DragInt("# Particles", &numParticles, 1, 0, INT_MAX);
+			ImGui::DragInt("# Particles", &numParticles, 1, 0, MAX_PARTICLES);
 			ImGui::ColorEdit4("Default Color", particleColor);
 		});
 
-		//std::cout << "frameTime: " << timer.frameTime() << std::endl;
-		//std::cout << "FPS: " << timer.framesPerSecond() << std::endl;
+		// Physics Info Display
+		gui.addWidget("Physics Info", [&]() {
+			ImGui::DragFloat("Gravity", &gravity, 0.01, 0.0f, 1000000.0f);
+			ImGui::DragFloat("Boundary Damping", &boundaryDamping, 0.001, 0.0f, 1.0f);
+			ImGui::DragFloat("Collision Damping", &collisionDamping, 0.001, 0.0f, 1.0f);
+			ImGui::DragInt("# Substeps", &nSimulationSubsteps, 1, 1, 100);
+		});
 
+		gui.addWidget("Interaction", [&]() {
+			ImGui::DragFloat("Radius", &handRadius, 0.001f, 0.001f, 1000000.0f);
+			ImGui::DragFloat("Strength", &interactionStrength, 0.001f, 0.001f, 1000000.0f);
+		});
 
 		inputManager.processInputs(); // Poll the user inputs
 		if (window.pauseRendering()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
 		}
+		mousePosition = inputManager.mousePosition();
+		mouseInteraction.setPosition(mousePosition);
 
 		// Set the camera projection with the current aspect ratio
 		float aspect = renderer.aspectRatio();
@@ -145,8 +174,18 @@ void Application::run() {
 		particleInfo.radius = particleRadius;
 		particleInfo.spacing = particleSpacing;
 
+		physicsInfo.gravity = gravity;
+		physicsInfo.boundaryDampingFactor = boundaryDamping;
+		physicsInfo.collisionDampingFactor = collisionDamping;
+		physicsInfo.nSubsteps = nSimulationSubsteps;
+
+		mouseInteraction.radius = handRadius;
+		mouseInteraction.strengthFactor = interactionStrength;
+
 		fluidParticles.setBoundingBox(box);
 		fluidParticles.setParticleInfo(particleInfo);
+		fluidParticles.setPhysicsInfo(physicsInfo);
+		fluidParticles.setHand(mouseInteraction);
 		if (letThereBeLight) {
 			fluidParticles.update(); // Update the particle systems
 		} else {

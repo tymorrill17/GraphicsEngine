@@ -2,6 +2,7 @@
 #include "glm/glm.hpp"
 #include "NonCopyable.h"
 #include "utility/timer.h"
+#include "physics/hand.h"
 #include <vector>
 
 #define MAX_PARTICLES 100000
@@ -26,9 +27,16 @@ struct Particle2D {
 	glm::vec4 color{ 1.0f };
 };
 
+struct GlobalPhysicsInfo {
+	float gravity = 9.8f;
+	float boundaryDampingFactor;
+	float collisionDampingFactor;
+	int nSubsteps;
+};
+
 class ParticleSystem2D : public NonCopyable {
 public:
-	ParticleSystem2D(GlobalParticleInfo globalInfo, BoundingBox box);
+	ParticleSystem2D(GlobalParticleInfo particleInfo, GlobalPhysicsInfo physicsInfo, BoundingBox box);
 	~ParticleSystem2D();
 
 	// @brief initialize the particles in a grid
@@ -37,20 +45,29 @@ public:
 	void update();
 
 	void setBoundingBox(BoundingBox box) { _bbox = box; }
-	void setParticleInfo(GlobalParticleInfo particleInfo) { _globalInfo = particleInfo; }
+	void setParticleInfo(GlobalParticleInfo particleInfo) { _globalParticleInfo = particleInfo; }
+	void setPhysicsInfo(GlobalPhysicsInfo physicsInfo) { _globalPhysics = physicsInfo; }
+	void setHand(Hand interactionHand) { _interactionHand = interactionHand; }
 
 	Particle2D* particles() { return _particles; }
-	GlobalParticleInfo& particleInfo() { return _globalInfo; }
+	GlobalParticleInfo& particleInfo() { return _globalParticleInfo; }
+	GlobalPhysicsInfo& physicsInfo() { return _globalPhysics; }
 
 protected:
 	Particle2D* _particles; // Array of 2D particles
 	BoundingBox _bbox;
-	GlobalParticleInfo _globalInfo;
+	GlobalParticleInfo _globalParticleInfo;
+	GlobalPhysicsInfo _globalPhysics;
+	Hand _interactionHand;
 
+	// @brief Resolves collisions between particles
+	void resolveParticleCollisions();
 
-	// @brief Resolves collisions with the bouding box and between particles
-	void resolveCollisions();
+	// @brief Resolves collisions with the bouding box
+	void resolveBoundaryCollisions();
 
 	// @brief applies acceleration due to gravity to the velocities of the particles
-	void applyGravity();
+	void applyGravity(float deltaTime);
+
+	void applyHandForces(float deltaTime);
 };

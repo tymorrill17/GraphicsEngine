@@ -19,6 +19,9 @@ void InputManager::processInputs() {
 		case SDL_QUIT:
 			_window.closeWindow();
 			break;
+		case SDL_MOUSEMOTION:
+			updateMousePosition(&sdl_event);
+			break;
 		case SDL_WINDOWEVENT:
 			switch (sdl_event.window.event) {
 			case SDL_WINDOWEVENT_MINIMIZED:
@@ -55,4 +58,11 @@ void InputManager::processInputs() {
 			break;
 		}
 	}
+}
+
+void InputManager::updateMousePosition(SDL_Event* e) {
+	// Taking the mouse position from SDL, which has an origin in the top left corner, to
+	// our coordinate system which has the origin in the middle
+	_mousePosition.x = (e->motion.x * 2.0f / _window.extent().height) - static_cast<float>(_window.extent().width) / static_cast<float>(_window.extent().height);
+	_mousePosition.y = (-e->motion.y * 2.0f / _window.extent().height) + 1.0f;
 }

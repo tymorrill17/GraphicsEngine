@@ -10,6 +10,7 @@
 #include "renderer/descriptor.h"
 #include "renderer/buffer.h"
 #include "physics/particle_system.h"
+#include "physics/hand.h"
 #include "systems/particle_render_system.h"
 #include "systems/render_system.h"
 #include "systems/gui_render_system.h"
