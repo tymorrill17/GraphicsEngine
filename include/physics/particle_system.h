@@ -2,8 +2,10 @@
 #include "glm/glm.hpp"
 #include "NonCopyable.h"
 #include "utility/timer.h"
+#include "utility/input_manager.h"
 #include "physics/hand.h"
 #include <vector>
+#include <iostream>
 
 #define MAX_PARTICLES 100000
 
@@ -36,7 +38,13 @@ struct GlobalPhysicsInfo {
 
 class ParticleSystem2D : public NonCopyable {
 public:
-	ParticleSystem2D(GlobalParticleInfo particleInfo, GlobalPhysicsInfo physicsInfo, BoundingBox box);
+	ParticleSystem2D(
+		GlobalParticleInfo& particleInfo,
+		GlobalPhysicsInfo& physicsInfo,
+		BoundingBox& box,
+		InputManager& inputManager,
+		Hand* hand = nullptr
+	);
 	~ParticleSystem2D();
 
 	// @brief initialize the particles in a grid
@@ -47,7 +55,7 @@ public:
 	void setBoundingBox(BoundingBox box) { _bbox = box; }
 	void setParticleInfo(GlobalParticleInfo particleInfo) { _globalParticleInfo = particleInfo; }
 	void setPhysicsInfo(GlobalPhysicsInfo physicsInfo) { _globalPhysics = physicsInfo; }
-	void setHand(Hand interactionHand) { _interactionHand = interactionHand; }
+	void setHand(Hand* interactionHand) { _interactionHand = interactionHand; }
 
 	Particle2D* particles() { return _particles; }
 	GlobalParticleInfo& particleInfo() { return _globalParticleInfo; }
@@ -55,10 +63,11 @@ public:
 
 protected:
 	Particle2D* _particles; // Array of 2D particles
-	BoundingBox _bbox;
-	GlobalParticleInfo _globalParticleInfo;
-	GlobalPhysicsInfo _globalPhysics;
-	Hand _interactionHand;
+	BoundingBox& _bbox;
+	GlobalParticleInfo& _globalParticleInfo;
+	GlobalPhysicsInfo& _globalPhysics;
+	InputManager& _inputManager;
+	Hand* _interactionHand;
 
 	// @brief Resolves collisions between particles
 	void resolveParticleCollisions();
@@ -67,7 +76,7 @@ protected:
 	void resolveBoundaryCollisions();
 
 	// @brief applies acceleration due to gravity to the velocities of the particles
-	void applyGravity(float deltaTime);
+	glm::vec2 getAcceleration(int particleIndex);
 
-	void applyHandForces(float deltaTime);
+	void assignInputEvents();
 };

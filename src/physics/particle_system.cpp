@@ -7,13 +7,22 @@ static long double norm(glm::vec2 v) {
 	return glm::sqrt(v.x * v.x + v.y * v.y);
 }
 
-ParticleSystem2D::ParticleSystem2D(GlobalParticleInfo particleInfo, GlobalPhysicsInfo physicsInfo, BoundingBox box) :
+ParticleSystem2D::ParticleSystem2D(
+	GlobalParticleInfo& particleInfo, 
+	GlobalPhysicsInfo& physicsInfo,
+	BoundingBox& box,
+	InputManager& inputManager,
+	Hand* hand
+	) :
 	_globalParticleInfo(particleInfo),
 	_globalPhysics(physicsInfo),
-	_bbox(box) {
+	_bbox(box),
+	_inputManager(inputManager),
+	_interactionHand(hand) {
 
 	_particles = new Particle2D[MAX_PARTICLES];
 	arrangeParticles();
+	assignInputEvents();
 }
 
 ParticleSystem2D::~ParticleSystem2D() {
@@ -52,9 +61,11 @@ void ParticleSystem2D::update() {
 	float subDeltaTime = timer.frameTime() / _globalPhysics.nSubsteps;
 	for (int i = 0; i < _globalPhysics.nSubsteps; i++) {
 
-		applyGravity(subDeltaTime);
-
-		// For each particle, apply velocity to position
+		// For each particle, first apply acceleration to velocity
+		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+			_particles[i].velocity += getAcceleration(i) * subDeltaTime;
+		}
+		// Then apply velocity to position
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
 			_particles[i].position += _particles[i].velocity * subDeltaTime;
 		}
@@ -89,11 +100,33 @@ void ParticleSystem2D::resolveBoundaryCollisions() {
 	}
 }
 
-void ParticleSystem2D::applyGravity(float deltaTime) {
+glm::vec2 ParticleSystem2D::getAcceleration(int particleIndex) {
 	static Timer& timer = Timer::getTimer();
-	for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-		_particles[i].velocity += (_globalPhysics.gravity * deltaTime) * down;
+
+	glm::vec2 gravityAcceleration = _globalPhysics.gravity * down;
+	glm::vec2 handAcceleration{ 0.f, 0.f };
+
+	// Input actions modify gravity
+	if (_interactionHand->isInteracting()) {
+		float interactionStrength = _interactionHand->action() == HandAction::pulling ? _interactionHand->strengthFactor : -_interactionHand->strengthFactor;
+		// Hand is interacting, so find the vector from the hand to the particle
+		glm::vec2 particleToHand = _interactionHand->position() - _particles[particleIndex].position;
+		float sqrDst = glm::dot(particleToHand, particleToHand);
+
+		// If particle is in hand radius, change acceleration on particle
+		if (sqrDst < _interactionHand->radius * _interactionHand->radius) {
+			float dst = glm::sqrt(sqrDst);
+			float centerFactor = 1 - dst / _interactionHand->radius;
+			particleToHand = particleToHand / dst;
+
+			handAcceleration += (particleToHand * interactionStrength - _particles[particleIndex].velocity) * centerFactor;
+			/*float gravityWeight = 1 - (centerFactor * glm::clamp(interactionStrength / _globalPhysics.gravity, 0.0f, 1.0f));
+			glm::vec2 acceleration = gravityAcceleration * gravityWeight + particleToHand * centerFactor * interactionStrength;
+			acceleration -= _particles[particleIndex].velocity * centerFactor;
+			return acceleration;*/
+		}
 	}
+	return gravityAcceleration + handAcceleration;
 }
 
 void ParticleSystem2D::resolveParticleCollisions() {
@@ -124,5 +157,21 @@ void ParticleSystem2D::resolveParticleCollisions() {
 			}
 		}
 	}
+}
+
+void ParticleSystem2D::assignInputEvents() {
+	if (!_interactionHand) return;
+	_inputManager.addListener(InputEvent::leftMouseDown, [&]() {
+		_interactionHand->setAction(HandAction::pushing);
+	});
+	_inputManager.addListener(InputEvent::leftMouseUp, [&]() {
+		_interactionHand->setAction(HandAction::idle);
+	});
+	_inputManager.addListener(InputEvent::rightMouseUp, [&]() {
+		_interactionHand->setAction(HandAction::idle);
+	});
+	_inputManager.addListener(InputEvent::rightMouseDown, [&]() {
+		_interactionHand->setAction(HandAction::pulling);
+	});
 }
 

@@ -22,6 +22,26 @@ void InputManager::processInputs() {
 		case SDL_MOUSEMOTION:
 			updateMousePosition(&sdl_event);
 			break;
+		case SDL_MOUSEBUTTONDOWN:
+			switch (sdl_event.button.button) {
+			case SDL_BUTTON_LEFT:
+				dispatchEvent(InputEvent::leftMouseDown);
+				break;
+			case SDL_BUTTON_RIGHT:
+				dispatchEvent(InputEvent::rightMouseDown);
+				break;
+			}
+			break;
+		case SDL_MOUSEBUTTONUP:
+			switch (sdl_event.button.button) {
+			case SDL_BUTTON_LEFT:
+				dispatchEvent(InputEvent::leftMouseUp);
+				break;
+			case SDL_BUTTON_RIGHT:
+				dispatchEvent(InputEvent::rightMouseUp);
+				break;
+			}
+			break;
 		case SDL_WINDOWEVENT:
 			switch (sdl_event.window.event) {
 			case SDL_WINDOWEVENT_MINIMIZED:
@@ -65,4 +85,14 @@ void InputManager::updateMousePosition(SDL_Event* e) {
 	// our coordinate system which has the origin in the middle
 	_mousePosition.x = (e->motion.x * 2.0f / _window.extent().height) - static_cast<float>(_window.extent().width) / static_cast<float>(_window.extent().height);
 	_mousePosition.y = (-e->motion.y * 2.0f / _window.extent().height) + 1.0f;
+}
+
+void InputManager::addListener(InputEvent inputEvent, std::function<void()> callback) {
+	_listeners[inputEvent].push_back(std::move(callback));
+}
+
+void InputManager::dispatchEvent(InputEvent event) {
+	for (auto& callback : _listeners[event]) {
+		callback();
+	}
 }

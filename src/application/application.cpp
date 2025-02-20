@@ -30,28 +30,20 @@ void Application::run() {
 
 	//glm::vec4 particleColor = glm::vec4{ glm::normalize(glm::vec3{ 25.0f, 118.0f, 210.0f }), 1.0f };
 	float particleColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	float particleRadius = 0.02f;
-	float particleSpacing = 0.0f;
-	int numParticles = 306;
 
 	// The particle info struct contains the Particle struct (pos and vel), as well as color and radius of each particle
 	GlobalParticleInfo particleInfo{
-	.defaultColor = glm::vec4{ particleColor[0], particleColor[1], particleColor[2], particleColor[3] },
-	.radius = particleRadius,
-	.spacing = particleSpacing,
-	.numParticles = numParticles
+		.defaultColor = glm::vec4{ particleColor[0], particleColor[1], particleColor[2], particleColor[3] },
+		.radius = 0.02f,
+		.spacing = 0.0f,
+		.numParticles = 306
 	};
 
-	float boundaryDamping = 0.9f;
-	float collisionDamping = 0.9f;
-	float gravity = 9.8f;
-	int nSimulationSubsteps = 8;
-
 	GlobalPhysicsInfo physicsInfo{
-		.gravity = gravity,
-		.boundaryDampingFactor = boundaryDamping,
-		.collisionDampingFactor = collisionDamping,
-		.nSubsteps = nSimulationSubsteps,
+		.gravity = 9.8f,
+		.boundaryDampingFactor = 0.9f,
+		.collisionDampingFactor = 0.9f,
+		.nSubsteps = 8,
 	};
 
 	BoundingBox box{};
@@ -61,7 +53,7 @@ void Application::run() {
 	Hand mouseInteraction(handRadius, interactionStrength);
 
 	// The constructor of the particle system initializes the positions of the particles to a grid
-	ParticleSystem2D fluidParticles(particleInfo, physicsInfo, box);
+	ParticleSystem2D fluidParticles(particleInfo, physicsInfo, box, inputManager, &mouseInteraction);
 
 	// We will use a uniform buffer for the global particle info 
 	Buffer globalParticleBuffer(renderer.device(), renderer.allocator(), sizeof(GlobalParticleInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, renderer.device().physicalDeviceProperies().limits.minUniformBufferOffsetAlignment);
@@ -130,23 +122,24 @@ void Application::run() {
 
 		// Particle Info Display
 		gui.addWidget("Particle Info", [&]() {
-			ImGui::DragFloat("Radius", &particleRadius, 0.001, 0.0f, 1000000.0f);
-			ImGui::DragFloat("Spacing", &particleSpacing, 0.001, 0.0f, 1000000.0f);
-			ImGui::DragInt("# Particles", &numParticles, 1, 0, MAX_PARTICLES);
+			ImGui::DragFloat("Radius", &particleInfo.radius, 0.001, 0.0f, 1000000.0f);
+			ImGui::DragFloat("Spacing", &particleInfo.spacing, 0.001, 0.0f, 1000000.0f);
+			ImGui::DragInt("# Particles", &particleInfo.numParticles, 1, 0, MAX_PARTICLES);
 			ImGui::ColorEdit4("Default Color", particleColor);
 		});
 
 		// Physics Info Display
 		gui.addWidget("Physics Info", [&]() {
-			ImGui::DragFloat("Gravity", &gravity, 0.01, 0.0f, 1000000.0f);
-			ImGui::DragFloat("Boundary Damping", &boundaryDamping, 0.001, 0.0f, 1.0f);
-			ImGui::DragFloat("Collision Damping", &collisionDamping, 0.001, 0.0f, 1.0f);
-			ImGui::DragInt("# Substeps", &nSimulationSubsteps, 1, 1, 100);
+			ImGui::DragFloat("Gravity", &physicsInfo.gravity, 0.01, 0.0f, 1000000.0f);
+			ImGui::DragFloat("Boundary Damping", &physicsInfo.boundaryDampingFactor, 0.001, 0.0f, 1.0f);
+			ImGui::DragFloat("Collision Damping", &physicsInfo.collisionDampingFactor, 0.001, 0.0f, 1.0f);
+			ImGui::DragInt("# Substeps", &physicsInfo.nSubsteps, 1, 1, 100);
 		});
 
 		gui.addWidget("Interaction", [&]() {
 			ImGui::DragFloat("Radius", &handRadius, 0.001f, 0.001f, 1000000.0f);
 			ImGui::DragFloat("Strength", &interactionStrength, 0.001f, 0.001f, 1000000.0f);
+			ImGui::Text("Position: (%.2f, %.2f)", mouseInteraction.position().x, mouseInteraction.position().y);
 		});
 
 		inputManager.processInputs(); // Poll the user inputs
@@ -154,38 +147,24 @@ void Application::run() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
 		}
-		mousePosition = inputManager.mousePosition();
-		mouseInteraction.setPosition(mousePosition);
 
 		// Set the camera projection with the current aspect ratio
 		float aspect = renderer.aspectRatio();
 		box.left = -aspect; box.right = aspect; box.bottom = -1.0f; box.top = 1.0f;
 		//camera.setOrthographicProjection(-aspect, aspect, -1.0f, 1.0f, 0.1f, 10.0f);
 		camera.setOrthographicProjection(box.left, box.right, box.bottom, box.top, 0.1f, 10.0f);
-		camera.setViewDirection(glm::vec3{ 0.0f, 0.0f, 2.0f }, glm::vec3{ 0.0f, 0.0f, -1.0f });
+		camera.setViewDirection(glm::vec3{ 0.0f, 0.0f, -2.0f }, glm::vec3{ 0.0f, 0.0f, 1.0f });
 
 		// Update camera info in the global buffer
 		globalBufferObject.aspectRatio = renderer.aspectRatio();
 		globalBufferObject.projection = camera.projectionMatrix();
 		globalBufferObject.view = camera.viewMatrix();
 
-		particleInfo.defaultColor = glm::vec4{ particleColor[0], particleColor[1], particleColor[2], particleColor[3] };
-		particleInfo.numParticles = numParticles;
-		particleInfo.radius = particleRadius;
-		particleInfo.spacing = particleSpacing;
-
-		physicsInfo.gravity = gravity;
-		physicsInfo.boundaryDampingFactor = boundaryDamping;
-		physicsInfo.collisionDampingFactor = collisionDamping;
-		physicsInfo.nSubsteps = nSimulationSubsteps;
-
+		mousePosition = inputManager.mousePosition();
+		mouseInteraction.setPosition(mousePosition);
 		mouseInteraction.radius = handRadius;
 		mouseInteraction.strengthFactor = interactionStrength;
 
-		fluidParticles.setBoundingBox(box);
-		fluidParticles.setParticleInfo(particleInfo);
-		fluidParticles.setPhysicsInfo(physicsInfo);
-		fluidParticles.setHand(mouseInteraction);
 		if (letThereBeLight) {
 			fluidParticles.update(); // Update the particle systems
 		} else {
