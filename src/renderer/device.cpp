@@ -118,7 +118,11 @@ bool Device::isDeviceSuitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surf
 		// swapchainAdequate = !swapchainSupport.formats.empty() && !swapchainSupport.presentModes.empty();
 	}
 
-	return indices.isComplete() && extensionsSupported && swapchainAdequate;
+	VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+	bool discreteGPU = deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+
+	return indices.isComplete() && extensionsSupported && swapchainAdequate && discreteGPU;
 }
 
 VkPhysicalDevice Device::selectPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions) {
@@ -146,8 +150,11 @@ VkPhysicalDevice Device::selectPhysicalDevice(VkInstance instance, VkSurfaceKHR 
 		}
 	}
 
-	if (selectedDevice == VK_NULL_HANDLE)
-		throw std::runtime_error("Failed to find a suitable physical device!");
+	// Fall back on default GPU if no other suitable ones
+	if (selectedDevice == VK_NULL_HANDLE) {
+		logger.print("Failed to find a suitable physical device, selecting default: ");
+		selectedDevice = devices[0];
+	}
 
 	return selectedDevice;
 }
