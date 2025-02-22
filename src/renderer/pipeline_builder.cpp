@@ -7,7 +7,7 @@ PipelineBuilder::PipelineBuilder(const Device& device) : _device(device) {
 Pipeline PipelineBuilder::buildPipeline() {
     static Logger& logger = Logger::getLogger();
 
-    if (pipelineLayout == VK_NULL_HANDLE) {
+    if (_pipelineLayout == VK_NULL_HANDLE) {
         throw std::runtime_error("No pipeline layout fouund! Please include a pipeline layout to the pipeline builder!");
     }
 
@@ -25,7 +25,7 @@ Pipeline PipelineBuilder::buildPipeline() {
         .logicOpEnable = VK_FALSE,
         .logicOp = VK_LOGIC_OP_COPY,
         .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment
+        .pAttachments = &_config.colorBlendAttachment
     };
     
     // Not used yet so just initialize it to default
@@ -44,18 +44,18 @@ Pipeline PipelineBuilder::buildPipeline() {
     // Build the pipeline
     VkGraphicsPipelineCreateInfo pipelineInfo{
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = &renderingInfo,
-        .stageCount = static_cast<uint32_t>(shaderStages.size()),
-        .pStages = shaderStages.data(),
+        .pNext = &_config.renderingInfo,
+        .stageCount = static_cast<uint32_t>(_config.shaderModules.size()),
+        .pStages = _config.shaderModules.data(),
         .pVertexInputState = &vertexInputInfo,
-        .pInputAssemblyState = &inputAssembly,
+        .pInputAssemblyState = &_config.inputAssembly,
         .pViewportState = &viewportState,
-        .pRasterizationState = &rasterizer,
-        .pMultisampleState = &multisampling,
-        .pDepthStencilState = &depthStencil,
+        .pRasterizationState = &_config.rasterizer,
+        .pMultisampleState = &_config.multisampling,
+        .pDepthStencilState = &_config.depthStencil,
         .pColorBlendState = &colorBlending,
         .pDynamicState = &dynamicState,
-        .layout = pipelineLayout,
+        .layout = _pipelineLayout,
         .renderPass = nullptr // Using dynamic rendering
     };
 
@@ -64,94 +64,111 @@ Pipeline PipelineBuilder::buildPipeline() {
         throw std::runtime_error("Failed to create pipeline");
     }
 
-    Pipeline newPipeline(&_device, vkPipeline, pipelineLayout);
+    Pipeline newPipeline(&_device, vkPipeline, _pipelineLayout);
     logger.print("Successfully Created Render Pipeline");
 
     return newPipeline;
 }
 
 void PipelineBuilder::clear() {
-    vertexInputInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-    shaderStages.clear();
-    inputAssembly = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-    rasterizer = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    colorBlendAttachment = {};
-    multisampling = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    depthStencil = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-    renderingInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-    colorAttachmentFormat = VK_FORMAT_UNDEFINED;
-    pipelineLayout = VK_NULL_HANDLE;
+    _config.shaderModules.clear();
+    _config.vertexInputInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    _config.inputAssembly = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    _config.rasterizer = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    _config.colorBlendAttachment = {};
+    _config.multisampling = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    _config.depthStencil = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+    _config.renderingInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+    _config.colorAttachmentFormat = VK_FORMAT_UNDEFINED;
+    _pipelineLayout = VK_NULL_HANDLE;
 }
 
-void PipelineBuilder::setShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader) {
-    shaderStages.clear(); shaderStages.reserve(2);
-    shaderStages.push_back(Shader::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertexShader));
-    shaderStages.push_back(Shader::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader));
+void PipelineBuilder::setConfig(PipelineConfig config) {
+    clear();
+    _config = config;
 }
+
+// Shaders
+
+void PipelineBuilder::setVertexShader(VkShaderModule shader) {
+    _config.shaderModules.push_back(Shader::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, shader));
+}
+
+void PipelineBuilder::setFragmentShader(VkShaderModule shader) {
+    _config.shaderModules.push_back(Shader::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, shader));
+}
+
+void PipelineBuilder::setShader(VkShaderModule shader, VkShaderStageFlagBits shaderStage) {
+    _config.shaderModules.push_back(Shader::pipelineShaderStageCreateInfo(shaderStage, shader));
+}
+
+// Pipeline State
 
 void PipelineBuilder::setInputTopology(VkPrimitiveTopology topology) {
-    inputAssembly.topology = topology;
-    inputAssembly.primitiveRestartEnable = VK_FALSE; // Not using for now
+    _config.inputAssembly.topology = topology;
+    _config.inputAssembly.primitiveRestartEnable = VK_FALSE; // Not using for now
 }
 
 void PipelineBuilder::setPolygonMode(VkPolygonMode mode) {
-    rasterizer.polygonMode = mode;
-    rasterizer.lineWidth = 1.0f; // Setting this to a default of 1.0
+    _config.rasterizer.polygonMode = mode;
+    _config.rasterizer.lineWidth = 1.0f; // Setting this to a default of 1.0
 }
 
 void PipelineBuilder::setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace) {
-    rasterizer.cullMode = cullMode;
-    rasterizer.frontFace = frontFace;
+    _config.rasterizer.cullMode = cullMode;
+    _config.rasterizer.frontFace = frontFace;
 }
 
-void PipelineBuilder::setMultisampling() {
+void PipelineBuilder::setMultisampling(VkSampleCountFlagBits sampleCount) {
     // TODO: Defaulting to none until I learn more about this
-    multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT; // no multisampling: 1 sample per pixel
-    multisampling.minSampleShading = 1.0f;
-    multisampling.pSampleMask = nullptr;
-    multisampling.alphaToCoverageEnable = VK_FALSE;
-    multisampling.alphaToOneEnable = VK_FALSE;
+    _config.multisampling.sampleShadingEnable = VK_FALSE;
+    _config.multisampling.rasterizationSamples = sampleCount;
+    _config.multisampling.minSampleShading = 1.0f;
+    _config.multisampling.pSampleMask = nullptr;
+    _config.multisampling.alphaToCoverageEnable = VK_FALSE;
+    _config.multisampling.alphaToOneEnable = VK_FALSE;
 }
 
-void PipelineBuilder::disableBlending() {
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
+void PipelineBuilder::setBlending(bool enable) {
+    _config.colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    _config.colorBlendAttachment.blendEnable = enable;
 }
 
 void PipelineBuilder::setColorAttachmentFormat(VkFormat format) {
-    colorAttachmentFormat = format;
-    renderingInfo.colorAttachmentCount = 1;
-    renderingInfo.pColorAttachmentFormats = &colorAttachmentFormat;
+    _config.colorAttachmentFormat = format;
+    _config.renderingInfo.colorAttachmentCount = 1;
+    _config.renderingInfo.pColorAttachmentFormats = &_config.colorAttachmentFormat;
 }
 
 void PipelineBuilder::setDepthAttachmentFormat(VkFormat format) {
-    renderingInfo.depthAttachmentFormat = format;
+    _config.renderingInfo.depthAttachmentFormat = format;
 }
 
 void PipelineBuilder::setDepthTest(VkCompareOp compareOp) {
-    depthStencil.depthTestEnable = compareOp == VK_COMPARE_OP_NEVER ? VK_FALSE : VK_TRUE;
-    depthStencil.depthWriteEnable = compareOp == VK_COMPARE_OP_NEVER ? VK_FALSE : VK_TRUE;
-    depthStencil.depthCompareOp = compareOp;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.stencilTestEnable = VK_FALSE;
-    depthStencil.front = {};
-    depthStencil.back = {};
-    depthStencil.minDepthBounds = 0.0f;
-    depthStencil.maxDepthBounds = 1.0f;
+    _config.depthStencil.depthTestEnable = compareOp == VK_COMPARE_OP_NEVER ? VK_FALSE : VK_TRUE;
+    _config.depthStencil.depthWriteEnable = compareOp == VK_COMPARE_OP_NEVER ? VK_FALSE : VK_TRUE;
+    _config.depthStencil.depthCompareOp = compareOp;
+    _config.depthStencil.depthBoundsTestEnable = VK_FALSE;
+    _config.depthStencil.stencilTestEnable = VK_FALSE;
+    _config.depthStencil.front = {};
+    _config.depthStencil.back = {};
+    _config.depthStencil.minDepthBounds = 0.0f;
+    _config.depthStencil.maxDepthBounds = 1.0f;
 }
 
+// Pipeline Layout
+
 void PipelineBuilder::setPipelineLayout(VkPipelineLayout layout) {
-    pipelineLayout = layout;
+    _pipelineLayout = layout;
 }
 
 void PipelineBuilder::setPipelineLayout(VkPipelineLayoutCreateInfo layoutInfo) {
     VkPipelineLayout layout = createPipelineLayout(_device, layoutInfo);
-    pipelineLayout = layout;
+    _pipelineLayout = layout;
 }
 
 void PipelineBuilder::setVertexInputState(VkPipelineVertexInputStateCreateInfo createInfo) {
-    vertexInputInfo = createInfo;
+    _config.vertexInputInfo = createInfo;
 }
 
 //-------------------------- Static methods ---------------------------------//

@@ -11,7 +11,8 @@ void ParticleRenderSystem::buildPipeline() {
 	Shader::loadShaderModule(folderDir + "circle.vert.spv", _renderer.device(), defaultVertShader);
 	VkShaderModule defaultFragShader;
 	Shader::loadShaderModule(folderDir + "circle.frag.spv", _renderer.device(), defaultFragShader);
-	_renderer.pipelineBuilder().setShaders(defaultVertShader, defaultFragShader);
+	_renderer.pipelineBuilder().setVertexShader(defaultVertShader);
+	_renderer.pipelineBuilder().setFragmentShader(defaultFragShader);
 
 	VkPipelineLayout layout = PipelineBuilder::createPipelineLayout(_renderer.device(), PipelineBuilder::pipelineLayoutCreateInfo(_particleDescriptors));
 	_renderer.pipelineBuilder().setPipelineLayout(layout);
@@ -20,8 +21,8 @@ void ParticleRenderSystem::buildPipeline() {
 	_renderer.pipelineBuilder().setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 	_renderer.pipelineBuilder().setPolygonMode(VK_POLYGON_MODE_FILL);
 	_renderer.pipelineBuilder().setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-	_renderer.pipelineBuilder().setMultisampling();
-	_renderer.pipelineBuilder().disableBlending();
+	_renderer.pipelineBuilder().setMultisampling(VK_SAMPLE_COUNT_1_BIT);
+	_renderer.pipelineBuilder().setBlending(false);
 	_renderer.pipelineBuilder().setDepthTest();
 	_renderer.pipelineBuilder().setColorAttachmentFormat(_renderer.swapchain().imageFormat());
 
