@@ -1,6 +1,8 @@
 #include "renderer/shader.h"
 
-void Shader::loadShaderModule(const std::string& filepath, const Device& device, VkShaderModule& outShaderModule) {
+Shader::Shader(const Device& device, const std::string& filepath, VkShaderStageFlagBits stageFlag)
+	: _device(device),
+	_shaderStageFlag(stageFlag) {
 	// std::ios::ate -> puts stream curser at end
 	// std::ios::binary -> opens file in binary mode
 	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
@@ -24,12 +26,16 @@ void Shader::loadShaderModule(const std::string& filepath, const Device& device,
 	.pCode = buffer.data()
 	};
 
-	if (vkCreateShaderModule(device.device(), &createinfo, nullptr, &outShaderModule) != VK_SUCCESS) {
+	if (vkCreateShaderModule(device.device(), &createinfo, nullptr, &_shaderModule) != VK_SUCCESS) {
 		std::stringstream line;
 		line << "Error: vkCreateShaderModule() failed while creating " << filepath << std::endl;
 		throw std::runtime_error(line.str());
 	}
 	std::cout << "Shader successfully loaded: " << filepath << std::endl;
+}
+
+Shader::~Shader() {
+	vkDestroyShaderModule(_device.device(), _shaderModule, nullptr);
 }
 
 VkPipelineShaderStageCreateInfo Shader::pipelineShaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule shader) {

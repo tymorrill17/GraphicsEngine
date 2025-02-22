@@ -20,8 +20,8 @@ public:
 
 private:
 	ParticleSystem2D& _particleSystem;
-	Pipeline _pipeline;
 
+	std::vector<Pipeline> _pipelines;
 	std::vector<VkDescriptorSetLayout> _particleDescriptors;
 	std::vector<VkDescriptorSet> _particleSet;
 

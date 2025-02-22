@@ -7,26 +7,23 @@ void ParticleRenderSystem::buildPipeline() {
 	std::string baseDir = static_cast<std::string>(BASE_DIR);
 	std::string folderDir = baseDir + "\\shaders\\";
 
-	VkShaderModule defaultVertShader;
-	Shader::loadShaderModule(folderDir + "circle.vert.spv", _renderer.device(), defaultVertShader);
-	VkShaderModule defaultFragShader;
-	Shader::loadShaderModule(folderDir + "circle.frag.spv", _renderer.device(), defaultFragShader);
-	_renderer.pipelineBuilder().setVertexShader(defaultVertShader);
-	_renderer.pipelineBuilder().setFragmentShader(defaultFragShader);
+	Shader defaultVertShader(_renderer.device(), folderDir + "circle.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	Shader defaultFragShader(_renderer.device(), folderDir + "circle.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	_renderer.pipelineBuilder().setShader(defaultVertShader).setShader(defaultFragShader);
 
 	VkPipelineLayout layout = PipelineBuilder::createPipelineLayout(_renderer.device(), PipelineBuilder::pipelineLayoutCreateInfo(_particleDescriptors));
 	_renderer.pipelineBuilder().setPipelineLayout(layout);
-	_renderer.pipelineBuilder().setVertexInputState(PipelineBuilder::vertexInputStateCreateInfo());
+	Pipeline pipeline = _renderer.pipelineBuilder().setVertexInputState(PipelineBuilder::vertexInputStateCreateInfo())
+		.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+		.setPolygonMode(VK_POLYGON_MODE_FILL)
+		.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
+		.setMultisampling(VK_SAMPLE_COUNT_1_BIT)
+		.setBlending(false)
+		.setDepthTest()
+		.setColorAttachmentFormat(_renderer.swapchain().imageFormat())
+		.buildPipeline();
 
-	_renderer.pipelineBuilder().setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	_renderer.pipelineBuilder().setPolygonMode(VK_POLYGON_MODE_FILL);
-	_renderer.pipelineBuilder().setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-	_renderer.pipelineBuilder().setMultisampling(VK_SAMPLE_COUNT_1_BIT);
-	_renderer.pipelineBuilder().setBlending(false);
-	_renderer.pipelineBuilder().setDepthTest();
-	_renderer.pipelineBuilder().setColorAttachmentFormat(_renderer.swapchain().imageFormat());
-
-	_pipeline = _renderer.pipelineBuilder().buildPipeline();
+	_pipelines.push_back(std::move(pipeline));
 }
 
 ParticleRenderSystem::ParticleRenderSystem(Renderer& renderer, std::vector<VkDescriptorSetLayout> particleDescriptorLayout, std::vector<VkDescriptorSet> particleDescriptorSets, ParticleSystem2D& particleSystem) :
@@ -41,9 +38,9 @@ ParticleRenderSystem::ParticleRenderSystem(Renderer& renderer, std::vector<VkDes
 void ParticleRenderSystem::render(Command& cmd) {
 
 	// Bind pipelines and draw here
-	vkCmdBindPipeline(cmd.buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline.pipeline()); // Bind pipeline
-
-	vkCmdBindDescriptorSets(cmd.buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline.pipelineLayout(), 0, static_cast<uint32_t>(_particleSet.size()), _particleSet.data(), 0, nullptr);
-
+	for (auto& pipeline : _pipelines) {
+		vkCmdBindPipeline(cmd.buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline());
+		vkCmdBindDescriptorSets(cmd.buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout(), 0, static_cast<uint32_t>(_particleSet.size()), _particleSet.data(), 0, nullptr);
+	}
 	vkCmdDraw(cmd.buffer(), 6*_particleSystem.particleInfo().numParticles, 1, 0, 0);
 }

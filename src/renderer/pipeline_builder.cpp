@@ -83,43 +83,40 @@ void PipelineBuilder::clear() {
     _pipelineLayout = VK_NULL_HANDLE;
 }
 
-void PipelineBuilder::setConfig(PipelineConfig config) {
+PipelineBuilder& PipelineBuilder::setConfig(PipelineConfig config) {
     clear();
     _config = config;
+    return *this;
 }
 
 // Shaders
 
-void PipelineBuilder::setVertexShader(VkShaderModule shader) {
-    _config.shaderModules.push_back(Shader::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, shader));
-}
-
-void PipelineBuilder::setFragmentShader(VkShaderModule shader) {
-    _config.shaderModules.push_back(Shader::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, shader));
-}
-
-void PipelineBuilder::setShader(VkShaderModule shader, VkShaderStageFlagBits shaderStage) {
-    _config.shaderModules.push_back(Shader::pipelineShaderStageCreateInfo(shaderStage, shader));
+PipelineBuilder& PipelineBuilder::setShader(Shader& shader) {
+    _config.shaderModules.push_back(Shader::pipelineShaderStageCreateInfo(shader.stage(), shader.module()));
+    return *this;
 }
 
 // Pipeline State
 
-void PipelineBuilder::setInputTopology(VkPrimitiveTopology topology) {
+PipelineBuilder& PipelineBuilder::setInputTopology(VkPrimitiveTopology topology) {
     _config.inputAssembly.topology = topology;
     _config.inputAssembly.primitiveRestartEnable = VK_FALSE; // Not using for now
+    return *this;
 }
 
-void PipelineBuilder::setPolygonMode(VkPolygonMode mode) {
+PipelineBuilder& PipelineBuilder::setPolygonMode(VkPolygonMode mode) {
     _config.rasterizer.polygonMode = mode;
     _config.rasterizer.lineWidth = 1.0f; // Setting this to a default of 1.0
+    return *this;
 }
 
-void PipelineBuilder::setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace) {
+PipelineBuilder& PipelineBuilder::setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace) {
     _config.rasterizer.cullMode = cullMode;
     _config.rasterizer.frontFace = frontFace;
+    return *this;
 }
 
-void PipelineBuilder::setMultisampling(VkSampleCountFlagBits sampleCount) {
+PipelineBuilder& PipelineBuilder::setMultisampling(VkSampleCountFlagBits sampleCount) {
     // TODO: Defaulting to none until I learn more about this
     _config.multisampling.sampleShadingEnable = VK_FALSE;
     _config.multisampling.rasterizationSamples = sampleCount;
@@ -127,24 +124,28 @@ void PipelineBuilder::setMultisampling(VkSampleCountFlagBits sampleCount) {
     _config.multisampling.pSampleMask = nullptr;
     _config.multisampling.alphaToCoverageEnable = VK_FALSE;
     _config.multisampling.alphaToOneEnable = VK_FALSE;
+    return *this;
 }
 
-void PipelineBuilder::setBlending(bool enable) {
+PipelineBuilder& PipelineBuilder::setBlending(bool enable) {
     _config.colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     _config.colorBlendAttachment.blendEnable = enable;
+    return *this;
 }
 
-void PipelineBuilder::setColorAttachmentFormat(VkFormat format) {
+PipelineBuilder& PipelineBuilder::setColorAttachmentFormat(VkFormat format) {
     _config.colorAttachmentFormat = format;
     _config.renderingInfo.colorAttachmentCount = 1;
     _config.renderingInfo.pColorAttachmentFormats = &_config.colorAttachmentFormat;
+    return *this;
 }
 
-void PipelineBuilder::setDepthAttachmentFormat(VkFormat format) {
+PipelineBuilder& PipelineBuilder::setDepthAttachmentFormat(VkFormat format) {
     _config.renderingInfo.depthAttachmentFormat = format;
+    return *this;
 }
 
-void PipelineBuilder::setDepthTest(VkCompareOp compareOp) {
+PipelineBuilder& PipelineBuilder::setDepthTest(VkCompareOp compareOp) {
     _config.depthStencil.depthTestEnable = compareOp == VK_COMPARE_OP_NEVER ? VK_FALSE : VK_TRUE;
     _config.depthStencil.depthWriteEnable = compareOp == VK_COMPARE_OP_NEVER ? VK_FALSE : VK_TRUE;
     _config.depthStencil.depthCompareOp = compareOp;
@@ -154,6 +155,12 @@ void PipelineBuilder::setDepthTest(VkCompareOp compareOp) {
     _config.depthStencil.back = {};
     _config.depthStencil.minDepthBounds = 0.0f;
     _config.depthStencil.maxDepthBounds = 1.0f;
+    return *this;
+}
+
+PipelineBuilder& PipelineBuilder::setVertexInputState(VkPipelineVertexInputStateCreateInfo createInfo) {
+    _config.vertexInputInfo = createInfo;
+    return *this;
 }
 
 // Pipeline Layout
@@ -165,10 +172,6 @@ void PipelineBuilder::setPipelineLayout(VkPipelineLayout layout) {
 void PipelineBuilder::setPipelineLayout(VkPipelineLayoutCreateInfo layoutInfo) {
     VkPipelineLayout layout = createPipelineLayout(_device, layoutInfo);
     _pipelineLayout = layout;
-}
-
-void PipelineBuilder::setVertexInputState(VkPipelineVertexInputStateCreateInfo createInfo) {
-    _config.vertexInputInfo = createInfo;
 }
 
 //-------------------------- Static methods ---------------------------------//

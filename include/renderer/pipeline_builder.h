@@ -14,14 +14,14 @@ struct PipelineConfig {
 	std::vector<VkPipelineShaderStageCreateInfo> shaderModules;
 
 	// Pipeline State
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
-	VkPipelineInputAssemblyStateCreateInfo inputAssembly;
-	VkPipelineRasterizationStateCreateInfo rasterizer;
-	VkPipelineColorBlendAttachmentState colorBlendAttachment;
-	VkPipelineMultisampleStateCreateInfo multisampling;
-	VkPipelineDepthStencilStateCreateInfo depthStencil;
-	VkPipelineRenderingCreateInfo renderingInfo;
-	VkFormat colorAttachmentFormat;
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{ .sType=VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly{ .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+	VkPipelineRasterizationStateCreateInfo rasterizer{ .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+	VkPipelineMultisampleStateCreateInfo multisampling{ .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+	VkPipelineDepthStencilStateCreateInfo depthStencil{ .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+	VkPipelineRenderingCreateInfo renderingInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+	VkFormat colorAttachmentFormat{ VK_FORMAT_UNDEFINED };
 };
 
 class PipelineBuilder : public NonCopyable {
@@ -35,24 +35,22 @@ public:
 	// TODO: possibly move this to the Pipeline class so that each type of pipeline can adjust how they're built?
 	Pipeline buildPipeline();
 
-	void setConfig(PipelineConfig config);
+	PipelineBuilder& setConfig(PipelineConfig config);
 	inline PipelineConfig config() const { return _config; }
 
 	// Shaders
-	void setVertexShader(VkShaderModule shader);
-	void setFragmentShader(VkShaderModule shader);
-	void setShader(VkShaderModule shader, VkShaderStageFlagBits shaderStage);
+	PipelineBuilder& setShader(Shader& shader);
 
 	// Pipeline State
-	void setInputTopology(VkPrimitiveTopology topology);
-	void setPolygonMode(VkPolygonMode mode);
-	void setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace);
-	void setMultisampling(VkSampleCountFlagBits sampleCount);
-	void setBlending(bool enable);
-	void setColorAttachmentFormat(VkFormat format);
-	void setDepthAttachmentFormat(VkFormat format);
-	void setDepthTest(VkCompareOp compareOp = VK_COMPARE_OP_NEVER);
-	void setVertexInputState(VkPipelineVertexInputStateCreateInfo createInfo);
+	PipelineBuilder& setInputTopology(VkPrimitiveTopology topology);
+	PipelineBuilder& setPolygonMode(VkPolygonMode mode);
+	PipelineBuilder& setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace);
+	PipelineBuilder& setMultisampling(VkSampleCountFlagBits sampleCount);
+	PipelineBuilder& setBlending(bool enable);
+	PipelineBuilder& setColorAttachmentFormat(VkFormat format);
+	PipelineBuilder& setDepthAttachmentFormat(VkFormat format);
+	PipelineBuilder& setDepthTest(VkCompareOp compareOp = VK_COMPARE_OP_NEVER);
+	PipelineBuilder& setVertexInputState(VkPipelineVertexInputStateCreateInfo createInfo);
 
 	// Pipeline Layout
 	// @brief Create a default, blank VkPipelineLayoutCreateInfo struct
