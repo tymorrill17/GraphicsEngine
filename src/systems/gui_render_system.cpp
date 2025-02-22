@@ -14,7 +14,7 @@ std::vector<PoolSizeRatio> poolSizes = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
 };
 
 GuiRenderSystem::GuiRenderSystem(Renderer& renderer, Window& window) :
-	_renderer(renderer),
+	RenderSystem(renderer),
 	_window(window),
 	_descriptorPool(_renderer.device(), 1000, poolSizes) {
 	

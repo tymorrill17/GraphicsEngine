@@ -19,7 +19,6 @@ public:
 	void bindDescriptor(VkDescriptorSet set);
 
 private:
-	Renderer& _renderer;
 	ParticleSystem2D& _particleSystem;
 	Pipeline _pipeline;
 

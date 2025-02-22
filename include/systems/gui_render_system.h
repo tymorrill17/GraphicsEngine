@@ -13,7 +13,6 @@ public:
 	void getNewFrame();
 
 private:
-	Renderer& _renderer;
 	Window& _window;
 	DescriptorPool _descriptorPool;
 };

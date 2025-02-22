@@ -29,7 +29,7 @@ void ParticleRenderSystem::buildPipeline() {
 }
 
 ParticleRenderSystem::ParticleRenderSystem(Renderer& renderer, std::vector<VkDescriptorSetLayout> particleDescriptorLayout, std::vector<VkDescriptorSet> particleDescriptorSets, ParticleSystem2D& particleSystem) :
-	_renderer(renderer), 
+	RenderSystem(renderer), 
 	_particleDescriptors(particleDescriptorLayout),
 	_particleSet(particleDescriptorSets),
 	_particleSystem(particleSystem) {
