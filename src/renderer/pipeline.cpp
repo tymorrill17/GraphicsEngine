@@ -47,3 +47,24 @@ Pipeline& Pipeline::operator=(Pipeline&& other) noexcept {
 	return *this;
 }
 
+VkPipelineLayout PipelineLayout::createPipelineLayout(const Device& device, VkPipelineLayoutCreateInfo createInfo) {
+	VkPipelineLayout pipelineLayout;
+	if (vkCreatePipelineLayout(device.device(), &createInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create pipeline layout!");
+	}
+	return pipelineLayout;
+}
+
+VkPipelineLayoutCreateInfo PipelineLayout::pipelineLayoutCreateInfo(const std::vector<VkDescriptorSetLayout>& setLayouts, const std::vector<VkPushConstantRange>& pushConstantRanges) {
+	VkPipelineLayoutCreateInfo createInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.setLayoutCount = static_cast<uint32_t>(setLayouts.size()),
+		.pSetLayouts = setLayouts.data(),
+		.pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size()),
+		.pPushConstantRanges = pushConstantRanges.data()
+	};
+	return createInfo;
+}
+

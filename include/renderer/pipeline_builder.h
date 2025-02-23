@@ -22,6 +22,9 @@ struct PipelineConfig {
 	VkPipelineDepthStencilStateCreateInfo depthStencil{ .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
 	VkPipelineRenderingCreateInfo renderingInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 	VkFormat colorAttachmentFormat{ VK_FORMAT_UNDEFINED };
+
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{};
+	std::vector<VkPushConstantRange> pushConstantRanges{};
 };
 
 class PipelineBuilder : public NonCopyable {
@@ -53,21 +56,13 @@ public:
 	PipelineBuilder& setVertexInputState(VkPipelineVertexInputStateCreateInfo createInfo);
 
 	// Pipeline Layout
-	// @brief Create a default, blank VkPipelineLayoutCreateInfo struct
-	static VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo(const std::vector<VkDescriptorSetLayout>& setLayouts = {}, const std::vector<VkPushConstantRange>& pushConstantRanges = {});
-	// Creates a pipeline layout using the given create info
-	static VkPipelineLayout createPipelineLayout(const Device& device, VkPipelineLayoutCreateInfo createInfo);
-	void setPipelineLayout(VkPipelineLayout layout);
-	void setPipelineLayout(VkPipelineLayoutCreateInfo layoutInfo);
+	PipelineBuilder& addDescriptors(const std::vector<VkDescriptorSetLayout> descriptors);
+	PipelineBuilder& addPushConstants(const std::vector<VkPushConstantRange> pushConstants);
 
-	// TODO: Get rid of this weird createInfo function and add some functions like above to configure the vertex input state
 	static VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo();
 
 private:
 	// @brief Reference to the Vulkan device which creates the pipelines
 	const Device& _device;
 	PipelineConfig _config;
-	// I want pipeline layouts to be created when the pipeline is built. I don't want PipelineBuilder
-	// to have an instance of the pipeline layout. But let me refactor the config part first
-	VkPipelineLayout _pipelineLayout;
 };

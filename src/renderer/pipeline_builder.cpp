@@ -7,10 +7,6 @@ PipelineBuilder::PipelineBuilder(const Device& device) : _device(device) {
 Pipeline PipelineBuilder::buildPipeline() {
     static Logger& logger = Logger::getLogger();
 
-    if (_pipelineLayout == VK_NULL_HANDLE) {
-        throw std::runtime_error("No pipeline layout fouund! Please include a pipeline layout to the pipeline builder!");
-    }
-
     VkPipelineViewportStateCreateInfo viewportState{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .pNext = nullptr,
@@ -41,6 +37,9 @@ Pipeline PipelineBuilder::buildPipeline() {
         .pDynamicStates = &state[0]
     };
 
+    VkPipelineLayout layout = PipelineLayout::createPipelineLayout(_device,
+        PipelineLayout::pipelineLayoutCreateInfo(_config.descriptorSetLayouts, _config.pushConstantRanges));
+
     // Build the pipeline
     VkGraphicsPipelineCreateInfo pipelineInfo{
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -55,7 +54,7 @@ Pipeline PipelineBuilder::buildPipeline() {
         .pDepthStencilState = &_config.depthStencil,
         .pColorBlendState = &colorBlending,
         .pDynamicState = &dynamicState,
-        .layout = _pipelineLayout,
+        .layout = layout,
         .renderPass = nullptr // Using dynamic rendering
     };
 
@@ -64,7 +63,7 @@ Pipeline PipelineBuilder::buildPipeline() {
         throw std::runtime_error("Failed to create pipeline");
     }
 
-    Pipeline newPipeline(&_device, vkPipeline, _pipelineLayout);
+    Pipeline newPipeline(&_device, vkPipeline, layout);
     logger.print("Successfully Created Render Pipeline");
 
     return newPipeline;
@@ -80,7 +79,8 @@ void PipelineBuilder::clear() {
     _config.depthStencil = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
     _config.renderingInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
     _config.colorAttachmentFormat = VK_FORMAT_UNDEFINED;
-    _pipelineLayout = VK_NULL_HANDLE;
+    _config.descriptorSetLayouts.clear();
+    _config.pushConstantRanges.clear();
 }
 
 PipelineBuilder& PipelineBuilder::setConfig(PipelineConfig config) {
@@ -165,37 +165,18 @@ PipelineBuilder& PipelineBuilder::setVertexInputState(VkPipelineVertexInputState
 
 // Pipeline Layout
 
-void PipelineBuilder::setPipelineLayout(VkPipelineLayout layout) {
-    _pipelineLayout = layout;
+PipelineBuilder& PipelineBuilder::addDescriptors(const std::vector<VkDescriptorSetLayout> descriptors) {
+    _config.descriptorSetLayouts = descriptors;
+    return *this;
 }
 
-void PipelineBuilder::setPipelineLayout(VkPipelineLayoutCreateInfo layoutInfo) {
-    VkPipelineLayout layout = createPipelineLayout(_device, layoutInfo);
-    _pipelineLayout = layout;
+PipelineBuilder& PipelineBuilder::addPushConstants(const std::vector<VkPushConstantRange> pushConstants) {
+    _config.pushConstantRanges = pushConstants;
+    return *this;
 }
 
 //-------------------------- Static methods ---------------------------------//
 
-VkPipelineLayout PipelineBuilder::createPipelineLayout(const Device& device, VkPipelineLayoutCreateInfo createInfo) {
-    VkPipelineLayout pipelineLayout;
-    if (vkCreatePipelineLayout(device.device(), &createInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create pipeline layout!");
-    }
-    return pipelineLayout;
-}
-
-VkPipelineLayoutCreateInfo PipelineBuilder::pipelineLayoutCreateInfo(const std::vector<VkDescriptorSetLayout>& setLayouts, const std::vector<VkPushConstantRange>& pushConstantRanges) {
-    VkPipelineLayoutCreateInfo createInfo{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .setLayoutCount = static_cast<uint32_t>(setLayouts.size()),
-        .pSetLayouts = setLayouts.data(),
-        .pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size()),
-        .pPushConstantRanges = pushConstantRanges.data()
-    };
-    return createInfo;
-}
 
 VkPipelineVertexInputStateCreateInfo PipelineBuilder::vertexInputStateCreateInfo() {
     VkPipelineVertexInputStateCreateInfo createInfo{

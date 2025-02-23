@@ -9,11 +9,10 @@ void ParticleRenderSystem::buildPipeline() {
 
 	Shader defaultVertShader(_renderer.device(), folderDir + "circle.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	Shader defaultFragShader(_renderer.device(), folderDir + "circle.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-	_renderer.pipelineBuilder().setShader(defaultVertShader).setShader(defaultFragShader);
 
-	VkPipelineLayout layout = PipelineBuilder::createPipelineLayout(_renderer.device(), PipelineBuilder::pipelineLayoutCreateInfo(_particleDescriptors));
-	_renderer.pipelineBuilder().setPipelineLayout(layout);
 	Pipeline pipeline = _renderer.pipelineBuilder().setVertexInputState(PipelineBuilder::vertexInputStateCreateInfo())
+		.setShader(defaultVertShader)
+		.setShader(defaultFragShader)
 		.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 		.setPolygonMode(VK_POLYGON_MODE_FILL)
 		.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
@@ -21,6 +20,7 @@ void ParticleRenderSystem::buildPipeline() {
 		.setBlending(false)
 		.setDepthTest()
 		.setColorAttachmentFormat(_renderer.swapchain().imageFormat())
+		.addDescriptors(_particleDescriptors)
 		.buildPipeline();
 
 	_pipelines.push_back(std::move(pipeline));

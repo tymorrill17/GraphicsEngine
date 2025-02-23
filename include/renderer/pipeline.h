@@ -27,3 +27,14 @@ private:
 
 	void cleanup();
 };
+
+class PipelineLayout {
+public:
+
+	// @brief Create a default, blank VkPipelineLayoutCreateInfo struct
+	static VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo(const std::vector<VkDescriptorSetLayout>& setLayouts = {}, const std::vector<VkPushConstantRange>& pushConstantRanges = {});
+
+	// Creates a pipeline layout using the given create info
+	static VkPipelineLayout createPipelineLayout(const Device& device, VkPipelineLayoutCreateInfo createInfo);
+
+};
