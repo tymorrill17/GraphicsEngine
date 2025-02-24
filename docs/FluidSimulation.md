@@ -14,3 +14,29 @@ Currently, the particles are just given a random initial velocity with gravity a
 ![Demonstration of Interactive Window](pics/Milestone1-InteractiveParticleSystem.gif)
 
 Next step is to apply basic collision detection between the particles.
+
+### 02 - Particle Collisions, Introduce Forces With Mouse Input
+I implemented a brute-force, $O(n^2)$ algorithm to detect collisions between particles. Currently, it can only handle about 300 particles at 60 fps. I don't have plans to speed this up yet since I will be removing the particle collisions 
+for the fluid simulation, but the spatial hashing method I will use in the fluid simulation will be applicable to this kind of collision handling as well.
+
+I also implemented simple push and pull interaction forces when the mouse is left or right clicked. All this does is apply an acceleration to particles in the interaction radius whose strength is determined by how close to the mouse the particle is
+and how fast the particle is moving.
+
+$$ \vec{a}_{interaction} = (\frac{\vec{r_i}-\vec{r_p}}{|\vec{r_i}-\vec{r_p}|}S - \vec{v_p})W(\vec{r_i}-\vec{r_p}, h), $$
+  
+$$ W(\vec{r}, h) = 1 - \frac{|\vec{r}|}{h} $$
+
+Where:
+
+$\vec{r_i} \rightarrow$ position of interaction source,
+
+$\vec{r_p} \rightarrow$ position of particle,
+
+$\vec{v_p} \rightarrow$ velocity of particle,
+
+$h \rightarrow$ interaction radius, and
+
+$S \rightarrow$ interaction strength constant
+
+
+![Demonstration of Mouse Interaction and Particle Collisions](pics/Milestone2-ParticleCollisions.gif)
