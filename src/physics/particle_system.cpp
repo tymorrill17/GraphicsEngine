@@ -34,8 +34,9 @@ void ParticleSystem2D::arrangeParticles() {
 	float spacing = _globalParticleInfo.radius + _globalParticleInfo.spacing;
 	glm::vec2 offset = glm::vec2();
 
-	std::default_random_engine generator;
-	std::uniform_real_distribution<double> distribution(-1, 1);
+	// Random number generator for randomizing velocity (or position)
+	//std::default_random_engine generator;
+	//std::uniform_real_distribution<double> distribution(-1, 1);
 
 	// Calculate the size of the grid based on how many particles we have
 	int gridSize = static_cast<int>(glm::ceil(glm::sqrt(static_cast<float>(_globalParticleInfo.numParticles))));
@@ -50,8 +51,7 @@ void ParticleSystem2D::arrangeParticles() {
 		_particles[i].color = _globalParticleInfo.defaultColor;
 
 		// Set a random starting velocity
-		//_particles[i].velocity = 0.1f * glm::normalize(glm::vec2{ distribution(generator), distribution(generator) });
-		_particles[i].velocity = glm::vec2{ distribution(generator), distribution(generator) };
+		// _particles[i].velocity = glm::vec2{ distribution(generator), distribution(generator) };
 	}
 }
 

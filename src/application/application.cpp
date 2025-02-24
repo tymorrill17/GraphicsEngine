@@ -48,8 +48,8 @@ void Application::run() {
 
 	BoundingBox box{};
 
-	float handRadius = 0.1f;
-	float interactionStrength = 0.5f;
+	float handRadius = 0.4f;
+	float interactionStrength = 4.f;
 	Hand mouseInteraction(handRadius, interactionStrength);
 
 	// The constructor of the particle system initializes the positions of the particles to a grid

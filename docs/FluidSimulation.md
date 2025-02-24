@@ -24,7 +24,13 @@ and how fast the particle is moving.
 
 $$ \vec{a}_{interaction} = (\frac{\vec{r_i}-\vec{r_p}}{|\vec{r_i}-\vec{r_p}|}S - \vec{v_p})W(\vec{r_i}-\vec{r_p}, h), $$
   
-$$ W(\vec{r}, h) = 1 - \frac{|\vec{r}|}{h} $$
+$$
+W(\vec{r}, h) = 
+	\begin{cases}
+		1 - \frac{|\vec{r}|}{h} & 0 \leq |\vec{r}| \leq h \\
+		0 & \text{otherwise} 
+	\end{cases}
+$$
 
 Where:
 
