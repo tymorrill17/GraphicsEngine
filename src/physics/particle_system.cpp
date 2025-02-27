@@ -48,7 +48,7 @@ void ParticleSystem2D::arrangeParticles() {
 		_particles[i].position.y = static_cast<float>((i) / gridSize) * 2.0f * spacing + offset.y;
 
 		// Initialize the color of the particle to the default
-		_particles[i].color = _globalParticleInfo.defaultColor;
+		_particles[i].color = glm::vec4{ _globalParticleInfo.defaultColor[0], _globalParticleInfo.defaultColor[1], _globalParticleInfo.defaultColor[2], _globalParticleInfo.defaultColor[3] };
 
 		// Set a random starting velocity
 		// _particles[i].velocity = glm::vec2{ distribution(generator), distribution(generator) };
@@ -75,6 +75,7 @@ void ParticleSystem2D::update() {
 
 		// Resolve collisions with the walls of the bounding box
 		resolveBoundaryCollisions();
+
 
 	}
 }

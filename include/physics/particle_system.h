@@ -17,7 +17,7 @@ struct BoundingBox {
 };
 
 struct GlobalParticleInfo {
-	glm::vec4 defaultColor;
+	float defaultColor[4];
 	float radius;
 	float spacing;
 	int numParticles;

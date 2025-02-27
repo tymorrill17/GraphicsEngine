@@ -33,7 +33,7 @@ void Application::run() {
 
 	// The particle info struct contains the Particle struct (pos and vel), as well as color and radius of each particle
 	GlobalParticleInfo particleInfo{
-		.defaultColor = glm::vec4{ particleColor[0], particleColor[1], particleColor[2], particleColor[3] },
+		.defaultColor = { 1.0f, 1.0f, 1.0f, 1.0f },
 		.radius = 0.02f,
 		.spacing = 0.0f,
 		.numParticles = 306
@@ -125,7 +125,7 @@ void Application::run() {
 			ImGui::DragFloat("Radius", &particleInfo.radius, 0.001, 0.0f, 1000000.0f);
 			ImGui::DragFloat("Spacing", &particleInfo.spacing, 0.001, 0.0f, 1000000.0f);
 			ImGui::DragInt("# Particles", &particleInfo.numParticles, 1, 0, MAX_PARTICLES);
-			ImGui::ColorEdit4("Default Color", particleColor);
+			ImGui::ColorEdit4("Default Color", particleInfo.defaultColor);
 		});
 
 		// Physics Info Display
