@@ -6,6 +6,7 @@
 #include "physics/hand.h"
 #include <vector>
 #include <iostream>
+#include <cmath>
 
 #define MAX_PARTICLES 100000
 
@@ -79,4 +80,13 @@ protected:
 	glm::vec2 getAcceleration(int particleIndex);
 
 	void assignInputEvents();
+};
+
+class SmoothingKernels2D {
+public:
+	// @brief Poly6 polynomial interpolant that is smooth and has near-zero derivatives near the center. Should be used for density calculations e.g.
+	static float smooth(glm::vec2 r, float smoothingRadius);
+
+	// @brief This smoothing kernel has increasing derivatives near the center, the center being a sharp point having no derivative.
+	static float spikey(glm::vec2 r, float smoothingRadius);
 };

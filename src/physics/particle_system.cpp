@@ -1,7 +1,8 @@
 #include "physics/particle_system.h"
 #include <random>
 
-static glm::vec2 down{ 0.0f, -0.1f };
+static const glm::vec2 down{ 0.0f, -0.1f };
+static const double pi = 3.14159265358979323846;
 
 static long double norm(glm::vec2 v) {
 	return glm::sqrt(v.x * v.x + v.y * v.y);
@@ -175,4 +176,24 @@ void ParticleSystem2D::assignInputEvents() {
 		_interactionHand->setAction(HandAction::pulling);
 	});
 }
+
+
+// ----------------------------------------------- SMOOTHING KERNELS --------------------------------------------- //
+
+float SmoothingKernels2D::smooth(glm::vec2 r, float smoothingRadius) {
+	float magnitude = glm::length(r);
+	if (magnitude > smoothingRadius)
+		return 0;
+
+	return 315.f / (64.f * pi * pow(smoothingRadius, 9)) * pow(smoothingRadius*smoothingRadius - magnitude*magnitude, 3);
+}
+
+float SmoothingKernels2D::spikey(glm::vec2 r, float smoothingRadius) {
+	float magnitude = glm::length(r);
+	if (magnitude > smoothingRadius)
+		return 0;
+
+	return 15.f / (pi * pow(smoothingRadius, 6)) * pow(smoothingRadius - magnitude, 3);
+}
+
 
