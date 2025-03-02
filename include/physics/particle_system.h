@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include <cmath>
+#include <iostream>
 
 #define MAX_PARTICLES 100000
 
@@ -34,6 +35,9 @@ struct GlobalPhysicsInfo {
 	float gravity = 9.8f;
 	float boundaryDampingFactor;
 	float collisionDampingFactor;
+	float densitySmoothingRadius;
+	float pressureConstant;
+	float restDensity;
 	int nSubsteps;
 };
 
@@ -69,6 +73,7 @@ protected:
 	GlobalPhysicsInfo& _globalPhysics;
 	InputManager& _inputManager;
 	Hand* _interactionHand;
+	float* _densities;
 
 	// @brief Resolves collisions between particles
 	void resolveParticleCollisions();
@@ -76,8 +81,21 @@ protected:
 	// @brief Resolves collisions with the bouding box
 	void resolveBoundaryCollisions();
 
+	// @brief Calculates the density at each particle
+	void calculateParticleDensities();
+
+	// @brief Calculates the density at given position
+	float calculateDensity(glm::vec2 position);
+
 	// @brief applies acceleration due to gravity to the velocities of the particles
 	glm::vec2 getAcceleration(int particleIndex);
+
+	glm::vec2 calculatePressureForce(int index);
+
+	// Converts density to pressure using the ideal gas equation
+	float getPressure(float density);
+
+	float getSharedPressure(float density, float otherDensity);
 
 	void assignInputEvents();
 };
@@ -86,7 +104,9 @@ class SmoothingKernels2D {
 public:
 	// @brief Poly6 polynomial interpolant that is smooth and has near-zero derivatives near the center. Should be used for density calculations e.g.
 	static float smooth(glm::vec2 r, float smoothingRadius);
+	static float smoothDerivative(glm::vec2 r, float smoothingRadius);
 
 	// @brief This smoothing kernel has increasing derivatives near the center, the center being a sharp point having no derivative.
 	static float spikey(glm::vec2 r, float smoothingRadius);
+	static float spikeyDerivative(glm::vec2 r, float smoothingRadius);
 };

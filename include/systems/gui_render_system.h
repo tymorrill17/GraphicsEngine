@@ -12,6 +12,8 @@ public:
 
 	void getNewFrame();
 
+	void endFrame();
+
 private:
 	Window& _window;
 	DescriptorPool _descriptorPool;

@@ -34,23 +34,26 @@ void Application::run() {
 	// The particle info struct contains the Particle struct (pos and vel), as well as color and radius of each particle
 	GlobalParticleInfo particleInfo{
 		.defaultColor = { 1.0f, 1.0f, 1.0f, 1.0f },
-		.radius = 0.02f,
-		.spacing = 0.0f,
-		.numParticles = 306
+		.radius = 0.03f,
+		.spacing = 0.1f,
+		.numParticles = 500
 	};
 
 	GlobalPhysicsInfo physicsInfo{
-		.gravity = 9.8f,
+		.gravity = 0.f,
 		.boundaryDampingFactor = 0.9f,
 		.collisionDampingFactor = 0.9f,
-		.nSubsteps = 8,
+		.densitySmoothingRadius = 1.f,
+		.pressureConstant = 0.15f,
+		.restDensity = 2.5f,
+		.nSubsteps = 1,
 	};
 
 	BoundingBox box{};
 
 	float handRadius = 0.4f;
 	float interactionStrength = 4.f;
-	Hand mouseInteraction(handRadius, interactionStrength);
+	Hand mouseInteraction(handRadius, interactionStrength, coordinateScale);
 
 	// The constructor of the particle system initializes the positions of the particles to a grid
 	ParticleSystem2D fluidParticles(particleInfo, physicsInfo, box, inputManager, &mouseInteraction);
@@ -101,6 +104,12 @@ void Application::run() {
 
 	// Main application loop
 	while (!window.shouldClose()) {
+		inputManager.processInputs(); // Poll the user inputs
+		if (window.pauseRendering()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			continue;
+		}
+
 		timer.update();
 		guiRenderSystem.getNewFrame();
 
@@ -133,6 +142,9 @@ void Application::run() {
 			ImGui::DragFloat("Gravity", &physicsInfo.gravity, 0.01, 0.0f, 1000000.0f);
 			ImGui::DragFloat("Boundary Damping", &physicsInfo.boundaryDampingFactor, 0.001, 0.0f, 1.0f);
 			ImGui::DragFloat("Collision Damping", &physicsInfo.collisionDampingFactor, 0.001, 0.0f, 1.0f);
+			ImGui::DragFloat("Density Smoothing", &physicsInfo.densitySmoothingRadius, 0.001, 0.01f, 10.f);
+			ImGui::DragFloat("Pressure Constant", &physicsInfo.pressureConstant, 0.01, 0.01f, 1000.f);
+			ImGui::DragFloat("Rest Density", &physicsInfo.restDensity, 0.01, 0.01f, 10000.f);
 			ImGui::DragInt("# Substeps", &physicsInfo.nSubsteps, 1, 1, 100);
 		});
 
@@ -142,15 +154,10 @@ void Application::run() {
 			ImGui::Text("Position: (%.2f, %.2f)", mouseInteraction.position().x, mouseInteraction.position().y);
 		});
 
-		inputManager.processInputs(); // Poll the user inputs
-		if (window.pauseRendering()) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			continue;
-		}
-
 		// Set the camera projection with the current aspect ratio
 		float aspect = renderer.aspectRatio();
-		box.left = -aspect; box.right = aspect; box.bottom = -1.0f; box.top = 1.0f;
+		box.left = -aspect * coordinateScale; box.right = aspect * coordinateScale;
+		box.bottom = -1.0f * coordinateScale; box.top = 1.0f * coordinateScale;
 		//camera.setOrthographicProjection(-aspect, aspect, -1.0f, 1.0f, 0.1f, 10.0f);
 		camera.setOrthographicProjection(box.left, box.right, box.bottom, box.top, 0.1f, 10.0f);
 		camera.setViewDirection(glm::vec3{ 0.0f, 0.0f, -2.0f }, glm::vec3{ 0.0f, 0.0f, 1.0f });
@@ -179,6 +186,8 @@ void Application::run() {
 		renderer.renderAll(); // Have the renderer render all the render systems
 
 		renderer.resizeCallback(); // Check for window resize and call the window resize callback function
+
+		guiRenderSystem.endFrame();
 	}
 
 	// TODO: Make sure the engine waits for all fences before quitting. Currently it is exiting in the middle of a render and throwing a validation warning

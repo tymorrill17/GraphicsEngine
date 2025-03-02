@@ -62,6 +62,10 @@ void GuiRenderSystem::getNewFrame() {
 	ImGui::NewFrame();
 }
 
+void GuiRenderSystem::endFrame() {
+	ImGui::EndFrame();
+}
+
 GuiRenderSystem::~GuiRenderSystem() {
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplSDL2_Shutdown();
