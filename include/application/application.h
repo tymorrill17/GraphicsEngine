@@ -20,7 +20,7 @@
 const uint32_t APPLICATION_WIDTH = 1920;
 const uint32_t APPLICATION_HEIGHT = 1080;
 
-const float coordinateScale = 5;
+const float coordinateScale = 4.5;
 
 class Renderer;
 

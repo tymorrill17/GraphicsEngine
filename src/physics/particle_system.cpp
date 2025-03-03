@@ -43,7 +43,8 @@ void ParticleSystem2D::arrangeParticles() {
 
 	// Random number generator for randomizing velocity (or position)
 	//std::default_random_engine generator;
-	//std::uniform_real_distribution<double> distribution(-1, 1);
+	//std::uniform_real_distribution<double> distributiony(_bbox.bottom, _bbox.top);
+	//std::uniform_real_distribution<double> distributionx(_bbox.left, _bbox.right);
 
 	// Calculate the size of the grid based on how many particles we have
 	int gridSize = static_cast<int>(glm::ceil(glm::sqrt(static_cast<float>(_globalParticleInfo.numParticles))));
@@ -53,6 +54,8 @@ void ParticleSystem2D::arrangeParticles() {
 		// Arrange the positions of the particles into grids
 		_particles[i].position.x = static_cast<float>((i) % gridSize) * 2.0f * spacing + offset.x;
 		_particles[i].position.y = static_cast<float>((i) / gridSize) * 2.0f * spacing + offset.y;
+		//_particles[i].position.x = distributionx(generator);
+		//_particles[i].position.y = distributiony(generator);
 
 		// Initialize the color of the particle to the default
 		_particles[i].color = glm::vec4{ _globalParticleInfo.defaultColor[0], _globalParticleInfo.defaultColor[1], _globalParticleInfo.defaultColor[2], _globalParticleInfo.defaultColor[3] };
@@ -69,18 +72,19 @@ void ParticleSystem2D::update() {
 	float subDeltaTime = timer.frameTime() / _globalPhysics.nSubsteps;
 	for (int i = 0; i < _globalPhysics.nSubsteps; i++) {
 
-		// Calculate the density of the fluid at each particle
+		// Calculate the density of the fluid at each particle and populate _densities[]
 		calculateParticleDensities();
 
-		// For each particle, first apply acceleration to velocity
+		// For each particle, first apply acceleration to the velocity
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+			// getAcceleration applies gravity, interaction force, and pressure force at once
 			_particles[i].velocity += getAcceleration(i) * subDeltaTime;
 		}
 
 		// Apply pressure force
-		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+		/*for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
 			_particles[i].velocity += calculatePressureForce(i) * subDeltaTime / _densities[i];
-		}
+		}*/
 
 		// Then apply velocity to position
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
@@ -120,13 +124,16 @@ void ParticleSystem2D::resolveBoundaryCollisions() {
 
 float ParticleSystem2D::calculateDensity(glm::vec2 position) {
 	float density = 0.0f;
+	// Use the locations of each particle to calculate the density at position, with the smoothing function lessening the impact of particles further away
 	for (int j = 0; j < _globalParticleInfo.numParticles; j++) {
+		// The smoothing function returns 0 if the distance from position to the particle is greater than the smoothing radius
 		density += SmoothingKernels2D::smooth(position - _particles[j].position, _globalPhysics.densitySmoothingRadius);
 	}
 	return density;
 }
 
 void ParticleSystem2D::calculateParticleDensities() {
+	// We want to calculate the density at each particle location all at once.
 	for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
 		_densities[i] = calculateDensity(_particles[i].position);
 	}
@@ -135,6 +142,7 @@ void ParticleSystem2D::calculateParticleDensities() {
 glm::vec2 ParticleSystem2D::getAcceleration(int particleIndex) {
 	static Timer& timer = Timer::getTimer();
 
+	// initialize each acceleration type
 	glm::vec2 gravityAcceleration = _globalPhysics.gravity * down;
 	glm::vec2 handAcceleration{ 0.f, 0.f };
 	glm::vec2 pressureAcceleration{ 0.f, 0.f };
@@ -142,21 +150,21 @@ glm::vec2 ParticleSystem2D::getAcceleration(int particleIndex) {
 	// Input actions modify gravity
 	if (_interactionHand->isInteracting()) {
 		float interactionStrength = _interactionHand->action() == HandAction::pulling ? _interactionHand->strengthFactor : -_interactionHand->strengthFactor;
-		// Hand is interacting, so find the vector from the hand to the particle
+		// Hand is interacting, so find the vector from the hand to the particle and find its squared distance
 		glm::vec2 particleToHand = _interactionHand->position() - _particles[particleIndex].position;
 		float sqrDst = glm::dot(particleToHand, particleToHand);
 
 		// If particle is in hand radius, change acceleration on particle
 		if (sqrDst < _interactionHand->radius * _interactionHand->radius) {
 			float dst = glm::sqrt(sqrDst);
+			// Adding acceleration based on how far away the hand is... Could potentially use one of our smoothing functions for this
 			float centerFactor = 1 - dst / _interactionHand->radius;
-			particleToHand = particleToHand / dst;
-
+			particleToHand = particleToHand / dst; // Normalize the direction vector
 			handAcceleration += (particleToHand * interactionStrength - _particles[particleIndex].velocity) * centerFactor;
 		}
 	}
 
-	// Get acceleration due to pressure
+	// Get force due to pressure and convert it to acceleration by dividing by density
 	pressureAcceleration = calculatePressureForce(particleIndex) / _densities[particleIndex];
 
 	return gravityAcceleration + handAcceleration + pressureAcceleration;
@@ -168,7 +176,6 @@ static glm::vec2 getRandomDirection() {
 	std::uniform_real_distribution<double> distribution(-1, 1);
 
 	return glm::normalize(glm::vec2{ distribution(generator), distribution(generator) });
-
 }
 
 float ParticleSystem2D::getPressure(float density) {
@@ -182,18 +189,24 @@ float ParticleSystem2D::getSharedPressure(float density, float otherDensity) {
 }
 
 glm::vec2 ParticleSystem2D::calculatePressureForce(int index) {
-	glm::vec2 accel{ 0.0f, 0.0f };
-	float pressure = getPressure(_densities[index]);
+	glm::vec2 force{ 0.0f, 0.0f };
+	// We are finding a field quantity like density, so we use the SPH equation. This involves looping over each particle that contributes to the quantity
 	for (int j = 0; j < _globalParticleInfo.numParticles; j++) {
-		if (index == j) continue;
+		if (index == j) continue; // The particle itself doesn't contribute to the pressure force it feels
 
-		glm::vec2 itojDistance = _particles[index].position - _particles[j].position;
-		float distance = glm::length(itojDistance);
+		// Get the distance vector from the j-th particle to the current one. The force should be pointing in the OPPOSITE direction
+		glm::vec2 jtoiDistance = _particles[index].position - _particles[j].position;
+		float distance = glm::sqrt(glm::dot(jtoiDistance,jtoiDistance));
+		//if (distance > _globalPhysics.densitySmoothingRadius) continue;
+
 		// If particles are on top of each other, pick a random normal direction
-		glm::vec2 itojDirection = (distance == 0.0f) ? getRandomDirection() : itojDistance / distance;
-		accel += -getSharedPressure(_densities[index], _densities[j]) * itojDirection * SmoothingKernels2D::spikeyDerivative(itojDistance, _globalPhysics.densitySmoothingRadius) / _densities[j];
+		glm::vec2 jtoiDirection = (distance == 0.0f) ? getRandomDirection() : jtoiDistance / distance;
+
+		// The pressure force needs to follow newton's third law, so instead of using the particles full pressure, take the average between particle index and particle j
+		// Then multiply with the opposite direction to 
+		force += -getSharedPressure(_densities[index], _densities[j]) * jtoiDirection * SmoothingKernels2D::spikeyDerivative(jtoiDistance, _globalPhysics.densitySmoothingRadius) / _densities[j];
 	}
-	return accel;
+	return force;
 }
 
 void ParticleSystem2D::resolveParticleCollisions() {
@@ -230,8 +243,6 @@ void ParticleSystem2D::assignInputEvents() {
 	if (!_interactionHand) return;
 	_inputManager.addListener(InputEvent::leftMouseDown, [&]() {
 		_interactionHand->setAction(HandAction::pushing);
-		float densityAtMouse = calculateDensity(_interactionHand->position());
-		std::cout << "Density at mouse: " << densityAtMouse << std::endl;
 	});
 	_inputManager.addListener(InputEvent::leftMouseUp, [&]() {
 		_interactionHand->setAction(HandAction::idle);
@@ -244,11 +255,10 @@ void ParticleSystem2D::assignInputEvents() {
 	});
 }
 
-
 // ----------------------------------------------- SMOOTHING KERNELS --------------------------------------------- //
 
 float SmoothingKernels2D::smooth(glm::vec2 r, float smoothingRadius) {
-	float r2 = r.x * r.x + r.y * r.y;
+	float r2 = glm::dot(r, r);
 	float rmag = sqrt(r2);
 	if (rmag > smoothingRadius)
 		return 0;
@@ -257,7 +267,7 @@ float SmoothingKernels2D::smooth(glm::vec2 r, float smoothingRadius) {
 }
 
 float SmoothingKernels2D::smoothDerivative(glm::vec2 r, float smoothingRadius) {
-	float r2 = r.x * r.x + r.y * r.y;
+	float r2 = glm::dot(r, r);
 	float rmag = sqrt(r2);
 	if (rmag > smoothingRadius)
 		return 0;
@@ -266,19 +276,19 @@ float SmoothingKernels2D::smoothDerivative(glm::vec2 r, float smoothingRadius) {
 }
 
 float SmoothingKernels2D::spikey(glm::vec2 r, float smoothingRadius) {
-	float rmag = glm::length(r);
+	float rmag = glm::sqrt(glm::dot(r, r));
 	if (rmag > smoothingRadius)
 		return 0;
 
-	return 10.f / (pi * pow(smoothingRadius, 6)) * pow(smoothingRadius - rmag, 3);
+	return 10.f / (pi * pow(smoothingRadius, 5)) * pow(smoothingRadius - rmag, 3);
 }
 
 float SmoothingKernels2D::spikeyDerivative(glm::vec2 r, float smoothingRadius) {
-	float rmag = glm::length(r);
+	float rmag = glm::sqrt(glm::dot(r, r));
 	if (rmag > smoothingRadius)
 		return 0;
-
-	return -30.f / (pi * pow(smoothingRadius, 6)) * pow(smoothingRadius - rmag,2);
+	
+	return -30.f / (pi * pow(smoothingRadius, 5)) * pow(smoothingRadius - rmag, 2);
 }
 
 

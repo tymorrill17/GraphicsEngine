@@ -44,8 +44,8 @@ void Application::run() {
 		.boundaryDampingFactor = 0.9f,
 		.collisionDampingFactor = 0.9f,
 		.densitySmoothingRadius = 1.f,
-		.pressureConstant = 0.15f,
-		.restDensity = 2.5f,
+		.pressureConstant = 5.f,
+		.restDensity = 0.f,
 		.nSubsteps = 1,
 	};
 
