@@ -23,9 +23,15 @@ ParticleSystem2D::ParticleSystem2D(
 
 	_particles = new Particle2D[MAX_PARTICLES];
 	_densities = new float[MAX_PARTICLES];
+	_particleIndices = new uint32_t[MAX_PARTICLES];
+	_spatialLookup = new uint32_t[MAX_PARTICLES];
+	_startIndices = new uint32_t[MAX_PARTICLES];
 	// Initialize all entries to 0 in case we add more
 	for (int i = 0; i < MAX_PARTICLES; i++) {
 		_densities[i] = 0.f;
+		_particleIndices[i] = i;
+		_spatialLookup[i] = 0;
+		_startIndices[i] = INT_MAX;
 	}
 	arrangeParticles();
 	assignInputEvents();
@@ -34,6 +40,24 @@ ParticleSystem2D::ParticleSystem2D(
 ParticleSystem2D::~ParticleSystem2D() {
 	delete _particles;
 	delete _densities;
+	delete _particleIndices;
+	delete _spatialLookup;
+	delete _startIndices;
+}
+
+static glm::ivec2 getGridCell(glm::vec2 position, int cellSize) {
+	int cellX = static_cast<int>(position.x / cellSize);
+	int cellY = static_cast<int>(position.y / cellSize);
+	//std::cout << "Grid Cell Coordinates: (" << cellX << ", " << cellY << ")" << std::endl;
+	return glm::vec2{ cellX, cellY };
+}
+
+static uint32_t hashGridCell(glm::ivec2 gridCell, uint32_t hashSize) {
+	const uint32_t p1 = 73856093;
+	const uint32_t p2 = 19349663;
+	// const int p3 = 83492791;
+
+	return (static_cast<uint32_t>(gridCell.x) * p1 + static_cast<uint32_t>(gridCell.y) * p2) % hashSize;
 }
 
 void ParticleSystem2D::arrangeParticles() {
@@ -72,13 +96,24 @@ void ParticleSystem2D::update() {
 	float subDeltaTime = timer.frameTime() / _globalPhysics.nSubsteps;
 	for (int i = 0; i < _globalPhysics.nSubsteps; i++) {
 
+	    // TODO: Apply gravity and predict particle locations
+
+		// Update the spatial lookup arrays for use in calculating densities and forces
+		updateSpatialLookup();
+
 		// Calculate the density of the fluid at each particle and populate _densities[]
 		calculateParticleDensities();
+
+		//for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+			//std::cout << "density at particle " << i << ": " << _densities[i] << std::endl;
+		//}
 
 		// For each particle, first apply acceleration to the velocity
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
 			// getAcceleration applies gravity, interaction force, and pressure force at once
 			_particles[i].velocity += getAcceleration(i) * subDeltaTime;
+			//std::cout << "Position after getting accel: " << "(" << _particles[i].position.x << ", " << _particles[i].position.y << ")" << std::endl;
+			//std::cout << "Velocity after getting accel: " << "(" << _particles[i].velocity.x << ", " << _particles[i].velocity.y << ")" << std::endl;
 		}
 
 		// Apply pressure force
@@ -89,6 +124,8 @@ void ParticleSystem2D::update() {
 		// Then apply velocity to position
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
 			_particles[i].position += _particles[i].velocity * subDeltaTime;
+			//std::cout << "Position at end of loop: " << "(" << _particles[i].position.x << ", " << _particles[i].position.y << ")" << std::endl;
+			//std::cout << "Velocity at end of loop: " << "(" << _particles[i].velocity.x << ", " << _particles[i].velocity.y << ")" << std::endl;
 		}
 
 		// Resolve collisions between particles
@@ -97,7 +134,7 @@ void ParticleSystem2D::update() {
 		// Resolve collisions with the walls of the bounding box
 		resolveBoundaryCollisions();
 
-
+		
 	}
 }
 
@@ -125,10 +162,10 @@ void ParticleSystem2D::resolveBoundaryCollisions() {
 float ParticleSystem2D::calculateDensity(glm::vec2 position) {
 	float density = 0.0f;
 	// Use the locations of each particle to calculate the density at position, with the smoothing function lessening the impact of particles further away
-	for (int j = 0; j < _globalParticleInfo.numParticles; j++) {
-		// The smoothing function returns 0 if the distance from position to the particle is greater than the smoothing radius
-		density += SmoothingKernels2D::smooth(position - _particles[j].position, _globalPhysics.densitySmoothingRadius);
-	}
+	loopThroughNearbyPoints(position, [&](glm::vec2 dist, int particleIndex) {
+		float squareDst = glm::dot(dist, dist);
+		density += SmoothingKernels2D::smooth(squareDst, _globalPhysics.densitySmoothingRadius);
+	});
 	return density;
 }
 
@@ -166,7 +203,11 @@ glm::vec2 ParticleSystem2D::getAcceleration(int particleIndex) {
 
 	// Get force due to pressure and convert it to acceleration by dividing by density
 	pressureAcceleration = calculatePressureForce(particleIndex) / _densities[particleIndex];
+	//std::cout << "density after pressure force calculation: " << _densities[particleIndex] << std::endl;
 
+	//std::cout << "gravityAcceleration: " << gravityAcceleration.x << ", " << gravityAcceleration.y << std::endl;
+	//std::cout << "handAcceleration: " << handAcceleration.x << ", " << handAcceleration.y << std::endl;
+	//std::cout << "pressureAcceleration: " << pressureAcceleration.x << ", " << pressureAcceleration.y << std::endl;
 	return gravityAcceleration + handAcceleration + pressureAcceleration;
 }
 
@@ -191,22 +232,47 @@ float ParticleSystem2D::getSharedPressure(float density, float otherDensity) {
 glm::vec2 ParticleSystem2D::calculatePressureForce(int index) {
 	glm::vec2 force{ 0.0f, 0.0f };
 	// We are finding a field quantity like density, so we use the SPH equation. This involves looping over each particle that contributes to the quantity
-	for (int j = 0; j < _globalParticleInfo.numParticles; j++) {
-		if (index == j) continue; // The particle itself doesn't contribute to the pressure force it feels
+	loopThroughNearbyPoints(_particles[index].position, [&](glm::vec2 dist, int particleIndex) {
+		if (index == particleIndex) return; // The particle itself doesn't contribute to the pressure force it feels
 
-		// Get the distance vector from the j-th particle to the current one. The force should be pointing in the OPPOSITE direction
-		glm::vec2 jtoiDistance = _particles[index].position - _particles[j].position;
-		float distance = glm::sqrt(glm::dot(jtoiDistance,jtoiDistance));
-		//if (distance > _globalPhysics.densitySmoothingRadius) continue;
-
+		float squareDst = glm::dot(dist, dist);
 		// If particles are on top of each other, pick a random normal direction
-		glm::vec2 jtoiDirection = (distance == 0.0f) ? getRandomDirection() : jtoiDistance / distance;
+		glm::vec2 direction = (squareDst == 0.0f) ? getRandomDirection() : dist / glm::sqrt(squareDst);
 
 		// The pressure force needs to follow newton's third law, so instead of using the particles full pressure, take the average between particle index and particle j
-		// Then multiply with the opposite direction to 
-		force += -getSharedPressure(_densities[index], _densities[j]) * jtoiDirection * SmoothingKernels2D::spikeyDerivative(jtoiDistance, _globalPhysics.densitySmoothingRadius) / _densities[j];
-	}
+		// Then multiply with the opposite direction to
+		force += getSharedPressure(_densities[index], _densities[particleIndex]) * direction * SmoothingKernels2D::spikeyDerivative(squareDst, _globalPhysics.densitySmoothingRadius) / _densities[particleIndex];
+	});
 	return force;
+}
+
+static const std::vector<glm::ivec2> gridCellOffsets {
+	{1, 1}, {1, 0}, {1, -1},
+	{0, 1}, {0, -1}, {0, 0},
+	{-1, 0}, {-1, 1}, {-1, -1}
+};
+
+void ParticleSystem2D::loopThroughNearbyPoints(glm::vec2 particlePosition, std::function<void(glm::vec2, uint32_t)> callback) {
+	// Get the center grid cell
+	glm::ivec2 center = getGridCell(particlePosition, _globalPhysics.densitySmoothingRadius);
+	float squareSmoothingRadius = _globalPhysics.densitySmoothingRadius * _globalPhysics.densitySmoothingRadius;
+
+	for (auto& offset : gridCellOffsets) {
+		uint32_t gridKey = hashGridCell(center + offset, _globalParticleInfo.numParticles);
+		uint32_t cellStartIndex = _startIndices[gridKey];
+
+		// Loop through the rest of the particles in the grid cell
+		for (int i = cellStartIndex; i < _globalParticleInfo.numParticles; i++) {
+			if (_spatialLookup[i] != gridKey) break;
+
+			uint32_t particleIndex = _particleIndices[i];
+			glm::vec2 dist = _particles[particleIndex].position - particlePosition;
+			float squareDst = glm::dot(dist, dist);
+			if (squareDst <= squareSmoothingRadius) {
+				callback(dist, particleIndex);
+			}
+		}
+	}
 }
 
 void ParticleSystem2D::resolveParticleCollisions() {
@@ -239,6 +305,64 @@ void ParticleSystem2D::resolveParticleCollisions() {
 	}
 }
 
+void ParticleSystem2D::sortSpatialArrays() {
+	
+	int numParticles = _globalParticleInfo.numParticles;
+	uint32_t* indices = new uint32_t[numParticles];
+
+	// Fill indices array
+	for (int i = 0; i < numParticles; i++) {
+		indices[i] = i;
+	}
+
+	// Sort the indices array based on the given lambda function comparing the spatial lookup array
+	std::sort(indices, indices + numParticles, [&](uint32_t i, uint32_t j) {
+			return _spatialLookup[i] < _spatialLookup[j];
+		});
+
+	// Create temporary arrays to store sorted results
+	uint32_t* sortedParticleIndices = new uint32_t[numParticles];
+	uint32_t* sortedSpatialLookup = new uint32_t[numParticles];
+
+	for (int i = 0; i < numParticles; i++) {
+		sortedParticleIndices[i] = _particleIndices[indices[i]];
+		sortedSpatialLookup[i] = _spatialLookup[indices[i]];
+	}
+
+	for (int i = 0; i < numParticles; i++) {
+		_particleIndices[i] = sortedParticleIndices[i];
+		_spatialLookup[i] = sortedSpatialLookup[i];
+	}
+	
+	delete[] indices;
+	delete[] sortedParticleIndices;
+	delete[] sortedSpatialLookup;
+}
+
+void ParticleSystem2D::updateSpatialLookup() {
+	for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+		// First, get the spatial grid cell index and its hash value
+		glm::ivec2 gridCellIndex = getGridCell(_particles[i].position, _globalPhysics.densitySmoothingRadius);
+		uint32_t gridCellHashValue = hashGridCell(gridCellIndex, _globalParticleInfo.numParticles);
+
+		_particleIndices[i] = i;
+		_spatialLookup[i] = gridCellHashValue;
+		_startIndices[i] = INT_MAX; // reset the start indices
+	}
+
+	// Sort _particleIndices and _spatialLookup based on _spatialLookup
+	sortSpatialArrays();
+
+	// Calculate the start indices for each non-empty grid cell
+	for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+		uint32_t gridKey = _spatialLookup[i];
+		uint32_t prevGridKey = i == 0 ? INT_MAX : _spatialLookup[i - 1];
+		if (gridKey != prevGridKey) {
+			_startIndices[gridKey] = i;
+		}
+	}
+}
+
 void ParticleSystem2D::assignInputEvents() {
 	if (!_interactionHand) return;
 	_inputManager.addListener(InputEvent::leftMouseDown, [&]() {
@@ -257,34 +381,32 @@ void ParticleSystem2D::assignInputEvents() {
 
 // ----------------------------------------------- SMOOTHING KERNELS --------------------------------------------- //
 
-float SmoothingKernels2D::smooth(glm::vec2 r, float smoothingRadius) {
-	float r2 = glm::dot(r, r);
-	float rmag = sqrt(r2);
+float SmoothingKernels2D::smooth(float squareDst, float smoothingRadius) {
+	float rmag = sqrt(squareDst);
 	if (rmag > smoothingRadius)
 		return 0;
 
-	return 4.f / (pi * pow(smoothingRadius, 8)) * pow(smoothingRadius*smoothingRadius - r2, 3);
+	return 4.f / (pi * pow(smoothingRadius, 8)) * pow(smoothingRadius*smoothingRadius - squareDst, 3);
 }
 
-float SmoothingKernels2D::smoothDerivative(glm::vec2 r, float smoothingRadius) {
-	float r2 = glm::dot(r, r);
-	float rmag = sqrt(r2);
+float SmoothingKernels2D::smoothDerivative(float squareDst, float smoothingRadius) {
+	float rmag = sqrt(squareDst);
 	if (rmag > smoothingRadius)
 		return 0;
 
-	return -24.f / (pi * pow(smoothingRadius, 8)) * rmag * pow(smoothingRadius * smoothingRadius - r2, 2);
+	return -24.f / (pi * pow(smoothingRadius, 8)) * rmag * pow(smoothingRadius * smoothingRadius - squareDst, 2);
 }
 
-float SmoothingKernels2D::spikey(glm::vec2 r, float smoothingRadius) {
-	float rmag = glm::sqrt(glm::dot(r, r));
+float SmoothingKernels2D::spikey(float squareDst, float smoothingRadius) {
+	float rmag = glm::sqrt(squareDst);
 	if (rmag > smoothingRadius)
 		return 0;
 
 	return 10.f / (pi * pow(smoothingRadius, 5)) * pow(smoothingRadius - rmag, 3);
 }
 
-float SmoothingKernels2D::spikeyDerivative(glm::vec2 r, float smoothingRadius) {
-	float rmag = glm::sqrt(glm::dot(r, r));
+float SmoothingKernels2D::spikeyDerivative(float squareDst, float smoothingRadius) {
+	float rmag = glm::sqrt(squareDst);
 	if (rmag > smoothingRadius)
 		return 0;
 	

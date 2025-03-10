@@ -75,6 +75,17 @@ protected:
 	Hand* _interactionHand;
 	float* _densities;
 
+	// Compact Hashing
+	uint32_t* _particleIndices;
+	uint32_t* _spatialLookup;
+	uint32_t* _startIndices;
+
+	void updateSpatialLookup();
+
+	void sortSpatialArrays();
+
+	void loopThroughNearbyPoints(glm::vec2 particlePosition, std::function<void(glm::vec2, uint32_t)> callback);
+
 	// @brief Resolves collisions between particles
 	void resolveParticleCollisions();
 
@@ -103,10 +114,10 @@ protected:
 class SmoothingKernels2D {
 public:
 	// @brief Poly6 polynomial interpolant that is smooth and has near-zero derivatives near the center. Should be used for density calculations e.g.
-	static float smooth(glm::vec2 r, float smoothingRadius);
-	static float smoothDerivative(glm::vec2 r, float smoothingRadius);
+	static float smooth(float squareDst, float smoothingRadius);
+	static float smoothDerivative(float squareDst, float smoothingRadius);
 
 	// @brief This smoothing kernel has increasing derivatives near the center, the center being a sharp point having no derivative.
-	static float spikey(glm::vec2 r, float smoothingRadius);
-	static float spikeyDerivative(glm::vec2 r, float smoothingRadius);
-};
+	static float spikey(float squareDst, float smoothingRadius);
+	static float spikeyDerivative(float squareDst, float smoothingRadius);
+}; 
