@@ -74,6 +74,7 @@ protected:
 	InputManager& _inputManager;
 	Hand* _interactionHand;
 	float* _densities;
+	glm::vec2* _predictedParticlePositions;
 
 	// Compact Hashing
 	uint32_t* _particleIndices;
@@ -99,9 +100,11 @@ protected:
 	float calculateDensity(glm::vec2 position);
 
 	// @brief applies acceleration due to gravity to the velocities of the particles
-	glm::vec2 getAcceleration(int particleIndex);
+	glm::vec2 getForces(int particleIndex);
 
 	glm::vec2 calculatePressureForce(int index);
+
+	void applyGravity(int particleIndex, float deltaTime);
 
 	// Converts density to pressure using the ideal gas equation
 	float getPressure(float density);

@@ -3,6 +3,7 @@
 
 static const glm::vec2 down{ 0.0f, -0.1f };
 static const double pi = 3.14159265358979323846;
+static bool usePredictedPositions = true;
 
 static long double norm(glm::vec2 v) {
 	return glm::sqrt(v.x * v.x + v.y * v.y);
@@ -23,12 +24,14 @@ ParticleSystem2D::ParticleSystem2D(
 
 	_particles = new Particle2D[MAX_PARTICLES];
 	_densities = new float[MAX_PARTICLES];
+	_predictedParticlePositions = new glm::vec2[MAX_PARTICLES];
 	_particleIndices = new uint32_t[MAX_PARTICLES];
 	_spatialLookup = new uint32_t[MAX_PARTICLES];
 	_startIndices = new uint32_t[MAX_PARTICLES];
 	// Initialize all entries to 0 in case we add more
 	for (int i = 0; i < MAX_PARTICLES; i++) {
 		_densities[i] = 0.f;
+		_predictedParticlePositions[i] = { 0.f, 0.f };
 		_particleIndices[i] = i;
 		_spatialLookup[i] = 0;
 		_startIndices[i] = INT_MAX;
@@ -94,9 +97,13 @@ void ParticleSystem2D::update() {
 	
 	static Timer& timer = Timer::getTimer();
 	float subDeltaTime = timer.frameTime() / _globalPhysics.nSubsteps;
+	float predictionStep = 1.f / 120.f;
 	for (int i = 0; i < _globalPhysics.nSubsteps; i++) {
 
-	    // TODO: Apply gravity and predict particle locations
+		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+			applyGravity(i, subDeltaTime);
+			_predictedParticlePositions[i] = _particles[i].position + _particles[i].velocity * predictionStep;
+		}
 
 		// Update the spatial lookup arrays for use in calculating densities and forces
 		updateSpatialLookup();
@@ -104,28 +111,15 @@ void ParticleSystem2D::update() {
 		// Calculate the density of the fluid at each particle and populate _densities[]
 		calculateParticleDensities();
 
-		//for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-			//std::cout << "density at particle " << i << ": " << _densities[i] << std::endl;
-		//}
-
 		// For each particle, first apply acceleration to the velocity
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
 			// getAcceleration applies gravity, interaction force, and pressure force at once
-			_particles[i].velocity += getAcceleration(i) * subDeltaTime;
-			//std::cout << "Position after getting accel: " << "(" << _particles[i].position.x << ", " << _particles[i].position.y << ")" << std::endl;
-			//std::cout << "Velocity after getting accel: " << "(" << _particles[i].velocity.x << ", " << _particles[i].velocity.y << ")" << std::endl;
+			_particles[i].velocity += getForces(i) * subDeltaTime;
 		}
-
-		// Apply pressure force
-		/*for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-			_particles[i].velocity += calculatePressureForce(i) * subDeltaTime / _densities[i];
-		}*/
 
 		// Then apply velocity to position
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
 			_particles[i].position += _particles[i].velocity * subDeltaTime;
-			//std::cout << "Position at end of loop: " << "(" << _particles[i].position.x << ", " << _particles[i].position.y << ")" << std::endl;
-			//std::cout << "Velocity at end of loop: " << "(" << _particles[i].velocity.x << ", " << _particles[i].velocity.y << ")" << std::endl;
 		}
 
 		// Resolve collisions between particles
@@ -133,9 +127,11 @@ void ParticleSystem2D::update() {
 
 		// Resolve collisions with the walls of the bounding box
 		resolveBoundaryCollisions();
-
-		
 	}
+}
+
+void ParticleSystem2D::applyGravity(int particleIndex, float deltaTime) {
+	_particles[particleIndex].velocity += _globalPhysics.gravity * down * deltaTime;
 }
 
 void ParticleSystem2D::resolveBoundaryCollisions() {
@@ -172,15 +168,18 @@ float ParticleSystem2D::calculateDensity(glm::vec2 position) {
 void ParticleSystem2D::calculateParticleDensities() {
 	// We want to calculate the density at each particle location all at once.
 	for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-		_densities[i] = calculateDensity(_particles[i].position);
+		if (usePredictedPositions) {
+			_densities[i] = calculateDensity(_predictedParticlePositions[i]);
+		} else {
+			_densities[i] = calculateDensity(_particles[i].position);
+		}
 	}
 }
 
-glm::vec2 ParticleSystem2D::getAcceleration(int particleIndex) {
+glm::vec2 ParticleSystem2D::getForces(int particleIndex) {
 	static Timer& timer = Timer::getTimer();
 
 	// initialize each acceleration type
-	glm::vec2 gravityAcceleration = _globalPhysics.gravity * down;
 	glm::vec2 handAcceleration{ 0.f, 0.f };
 	glm::vec2 pressureAcceleration{ 0.f, 0.f };
 
@@ -208,7 +207,7 @@ glm::vec2 ParticleSystem2D::getAcceleration(int particleIndex) {
 	//std::cout << "gravityAcceleration: " << gravityAcceleration.x << ", " << gravityAcceleration.y << std::endl;
 	//std::cout << "handAcceleration: " << handAcceleration.x << ", " << handAcceleration.y << std::endl;
 	//std::cout << "pressureAcceleration: " << pressureAcceleration.x << ", " << pressureAcceleration.y << std::endl;
-	return gravityAcceleration + handAcceleration + pressureAcceleration;
+	return handAcceleration + pressureAcceleration;
 }
 
 static glm::vec2 getRandomDirection() {
@@ -231,8 +230,9 @@ float ParticleSystem2D::getSharedPressure(float density, float otherDensity) {
 
 glm::vec2 ParticleSystem2D::calculatePressureForce(int index) {
 	glm::vec2 force{ 0.0f, 0.0f };
+	glm::vec2 pos = usePredictedPositions ? _predictedParticlePositions[index] : _particles[index].position;
 	// We are finding a field quantity like density, so we use the SPH equation. This involves looping over each particle that contributes to the quantity
-	loopThroughNearbyPoints(_particles[index].position, [&](glm::vec2 dist, int particleIndex) {
+	loopThroughNearbyPoints(pos, [&](glm::vec2 dist, int particleIndex) {
 		if (index == particleIndex) return; // The particle itself doesn't contribute to the pressure force it feels
 
 		float squareDst = glm::dot(dist, dist);
@@ -266,7 +266,12 @@ void ParticleSystem2D::loopThroughNearbyPoints(glm::vec2 particlePosition, std::
 			if (_spatialLookup[i] != gridKey) break;
 
 			uint32_t particleIndex = _particleIndices[i];
-			glm::vec2 dist = _particles[particleIndex].position - particlePosition;
+			glm::vec2 dist{ 0.f, 0.f };
+			if (usePredictedPositions) {
+				dist = _predictedParticlePositions[particleIndex] - particlePosition;
+			} else {
+				dist = _particles[particleIndex].position - particlePosition;
+			}
 			float squareDst = glm::dot(dist, dist);
 			if (squareDst <= squareSmoothingRadius) {
 				callback(dist, particleIndex);
@@ -342,7 +347,12 @@ void ParticleSystem2D::sortSpatialArrays() {
 void ParticleSystem2D::updateSpatialLookup() {
 	for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
 		// First, get the spatial grid cell index and its hash value
-		glm::ivec2 gridCellIndex = getGridCell(_particles[i].position, _globalPhysics.densitySmoothingRadius);
+		glm::ivec2 gridCellIndex{ 0, 0 };
+		if (usePredictedPositions) {
+			gridCellIndex = getGridCell(_predictedParticlePositions[i], _globalPhysics.densitySmoothingRadius);
+		} else {
+			gridCellIndex = getGridCell(_particles[i].position, _globalPhysics.densitySmoothingRadius);
+		}
 		uint32_t gridCellHashValue = hashGridCell(gridCellIndex, _globalParticleInfo.numParticles);
 
 		_particleIndices[i] = i;
@@ -382,8 +392,7 @@ void ParticleSystem2D::assignInputEvents() {
 // ----------------------------------------------- SMOOTHING KERNELS --------------------------------------------- //
 
 float SmoothingKernels2D::smooth(float squareDst, float smoothingRadius) {
-	float rmag = sqrt(squareDst);
-	if (rmag > smoothingRadius)
+	if (squareDst > smoothingRadius*smoothingRadius)
 		return 0;
 
 	return 4.f / (pi * pow(smoothingRadius, 8)) * pow(smoothingRadius*smoothingRadius - squareDst, 3);
