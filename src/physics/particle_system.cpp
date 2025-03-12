@@ -93,11 +93,23 @@ void ParticleSystem2D::arrangeParticles() {
 	}
 }
 
+static const int numThreads = 16;
+
 void ParticleSystem2D::update() {
-	
 	static Timer& timer = Timer::getTimer();
 	float subDeltaTime = timer.frameTime() / _globalPhysics.nSubsteps;
-	float predictionStep = 1.f / 120.f;
+	float predictionStep = 1.f / 120.f; // Used to gain some stability with the position-prediction code. I should refine this later on.
+
+	// Parallel batching setup
+	std::vector<int> batchSizes;
+	batchSizes.reserve(numThreads);
+	int batchSize = _globalParticleInfo.numParticles / numThreads;
+	int oddBatchOut = _globalParticleInfo.numParticles - (numThreads - 1) * batchSize; // In case numThreads doesn't divide numParticles evenly
+	for (int i = 0; i < numThreads-1; i++) {
+		batchSizes.push_back(batchSize);
+	}
+	batchSizes.push_back(oddBatchOut);
+
 	for (int i = 0; i < _globalPhysics.nSubsteps; i++) {
 
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
@@ -109,13 +121,24 @@ void ParticleSystem2D::update() {
 		updateSpatialLookup();
 
 		// Calculate the density of the fluid at each particle and populate _densities[]
-		calculateParticleDensities();
+		//calculateParticleDensities();
+		calculateParticleDensitiesParallel(batchSizes);
+
+		for (int i = 0; i < numThreads; i++) {
+			_futures[i].get();
+		}
+		_futures.clear();
 
 		// For each particle, first apply acceleration to the velocity
-		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+		//for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
 			// getAcceleration applies gravity, interaction force, and pressure force at once
-			_particles[i].velocity += getForces(i) * subDeltaTime;
+			//_particles[i].velocity += getForces(i) * subDeltaTime;
+		//}
+		applyForcesToVelocityParallel(batchSizes, subDeltaTime);
+		for (int i = 0; i < numThreads; i++) {
+			_futures[i].get();
 		}
+		_futures.clear();
 
 		// Then apply velocity to position
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
@@ -176,6 +199,26 @@ void ParticleSystem2D::calculateParticleDensities() {
 	}
 }
 
+void ParticleSystem2D::calculateParticleDensitiesParallel(std::vector<int> batchSizes) {
+	// We want to calculate the density at each particle location all at once.
+	int start = 0;
+	int end = 0;
+	for (int i = 0; i < numThreads; i++) {
+		start = end;
+		end = start + batchSizes[i];
+		_futures.push_back(std::async(std::launch::async, [&](int startIndex, int endIndex) {
+			for (int i = startIndex; i < endIndex; i++) {
+				if (usePredictedPositions) {
+					_densities[i] = calculateDensity(_predictedParticlePositions[i]);
+				}
+				else {
+					_densities[i] = calculateDensity(_particles[i].position);
+				}
+			}
+		}, start, end));
+	}
+}
+
 glm::vec2 ParticleSystem2D::getForces(int particleIndex) {
 	static Timer& timer = Timer::getTimer();
 
@@ -208,6 +251,21 @@ glm::vec2 ParticleSystem2D::getForces(int particleIndex) {
 	//std::cout << "handAcceleration: " << handAcceleration.x << ", " << handAcceleration.y << std::endl;
 	//std::cout << "pressureAcceleration: " << pressureAcceleration.x << ", " << pressureAcceleration.y << std::endl;
 	return handAcceleration + pressureAcceleration;
+}
+
+void ParticleSystem2D::applyForcesToVelocityParallel(std::vector<int> batchSizes, float deltaTime) {
+	int start = 0;
+	int end = 0;
+	for (int i = 0; i < numThreads; i++) {
+		start = end;
+		end = start + batchSizes[i];
+		_futures.push_back(std::async(std::launch::async, [&](int startIndex, int endIndex) {
+			for (int i = startIndex; i < endIndex; i++) {
+				// getAcceleration applies gravity, interaction force, and pressure force at once
+				_particles[i].velocity += getForces(i) * deltaTime;
+			}
+		}, start, end));
+	}
 }
 
 static glm::vec2 getRandomDirection() {

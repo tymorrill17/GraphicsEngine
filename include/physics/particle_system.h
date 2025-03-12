@@ -8,6 +8,7 @@
 #include <iostream>
 #include <cmath>
 #include <iostream>
+#include <future>
 
 #define MAX_PARTICLES 100000
 
@@ -81,6 +82,9 @@ protected:
 	uint32_t* _spatialLookup;
 	uint32_t* _startIndices;
 
+	// Concurrency
+	std::vector<std::future<void>> _futures;
+
 	void updateSpatialLookup();
 
 	void sortSpatialArrays();
@@ -95,12 +99,14 @@ protected:
 
 	// @brief Calculates the density at each particle
 	void calculateParticleDensities();
+	void calculateParticleDensitiesParallel(std::vector<int> batchSizes);
 
 	// @brief Calculates the density at given position
 	float calculateDensity(glm::vec2 position);
 
 	// @brief applies acceleration due to gravity to the velocities of the particles
 	glm::vec2 getForces(int particleIndex);
+	void applyForcesToVelocityParallel(std::vector<int> batchSizes, float deltaTime);
 
 	glm::vec2 calculatePressureForce(int index);
 
