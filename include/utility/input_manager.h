@@ -9,7 +9,9 @@
 #include <iostream>
 enum class InputEvent {
 	leftMouseDown, leftMouseUp,
-	rightMouseDown, rightMouseUp
+	rightMouseDown, rightMouseUp,
+	spacebarDown, spacebarUp,
+	rightArrowDown, rightArrowUp
 };
 
 class InputManager : public NonCopyable {

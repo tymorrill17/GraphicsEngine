@@ -20,7 +20,8 @@ ParticleSystem2D::ParticleSystem2D(
 	_globalPhysics(physicsInfo),
 	_bbox(box),
 	_inputManager(inputManager),
-	_interactionHand(hand) {
+	_interactionHand(hand),
+	_simulationPaused(false) {
 
 	_particles = new Particle2D[MAX_PARTICLES];
 	_densities = new float[MAX_PARTICLES];
@@ -96,6 +97,10 @@ void ParticleSystem2D::arrangeParticles() {
 static const int numThreads = 16;
 
 void ParticleSystem2D::update() {
+	if (_simulationPaused) {
+		return;
+	}
+
 	static Timer& timer = Timer::getTimer();
 	float subDeltaTime = timer.frameTime() / _globalPhysics.nSubsteps;
 	float predictionStep = 1.f / 120.f; // Used to gain some stability with the position-prediction code. I should refine this later on.
@@ -445,6 +450,18 @@ void ParticleSystem2D::assignInputEvents() {
 	_inputManager.addListener(InputEvent::rightMouseDown, [&]() {
 		_interactionHand->setAction(HandAction::pulling);
 	});
+	_inputManager.addListener(InputEvent::spacebarDown, [&]() {
+		_simulationPaused = _simulationPaused ? false : true;
+	});
+	_inputManager.addListener(InputEvent::rightArrowDown, [&]() {
+		if (_simulationPaused) {
+			proceedFrame();
+		}
+	});
+}
+
+void ParticleSystem2D::proceedFrame() {
+
 }
 
 // ----------------------------------------------- SMOOTHING KERNELS --------------------------------------------- //

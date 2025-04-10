@@ -76,6 +76,7 @@ protected:
 	Hand* _interactionHand;
 	float* _densities;
 	glm::vec2* _predictedParticlePositions;
+	bool _simulationPaused;
 
 	// Compact Hashing
 	uint32_t* _particleIndices;
@@ -118,6 +119,8 @@ protected:
 	float getSharedPressure(float density, float otherDensity);
 
 	void assignInputEvents();
+
+	void proceedFrame();
 };
 
 class SmoothingKernels2D {

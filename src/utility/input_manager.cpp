@@ -65,16 +65,10 @@ void InputManager::processInputs() {
 				}
 				break;
 			case SDLK_SPACE:
-				if (_window.pauseRendering()) {
-					_window.setPauseRendering(false);
-				} else {
-					_window.setPauseRendering(true);
-				}
+				dispatchEvent(InputEvent::spacebarDown);
 				break;
 			case SDLK_RIGHT:
-				if (_window.pauseRendering()) {
-					_window.doOneFrame();
-				}
+				dispatchEvent(InputEvent::rightArrowDown);
 				break;
 			default:
 				break;

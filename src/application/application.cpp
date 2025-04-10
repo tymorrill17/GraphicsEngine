@@ -107,7 +107,7 @@ void Application::run() {
 		inputManager.processInputs(); // Poll the user inputs
 		if (window.pauseRendering()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			timer.update();
+			timer.update(); // Updating the timer here too so there are no large jumps in timer updates
 			continue;
 		}
 
@@ -188,9 +188,9 @@ void Application::run() {
 
 		renderer.resizeCallback(); // Check for window resize and call the window resize callback function
 
-		if (window.oneFrameOnly()) {
+		/*if (window.oneFrameOnly()) {
 			window.frameDone();
-		}
+		}*/
 
 		guiRenderSystem.endFrame();
 	}
