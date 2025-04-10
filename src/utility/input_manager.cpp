@@ -64,6 +64,18 @@ void InputManager::processInputs() {
 					_window.setFullscreen(true);
 				}
 				break;
+			case SDLK_SPACE:
+				if (_window.pauseRendering()) {
+					_window.setPauseRendering(false);
+				} else {
+					_window.setPauseRendering(true);
+				}
+				break;
+			case SDLK_RIGHT:
+				if (_window.pauseRendering()) {
+					_window.doOneFrame();
+				}
+				break;
 			default:
 				break;
 			}

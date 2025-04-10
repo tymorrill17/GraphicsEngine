@@ -6,6 +6,7 @@ Window::Window(glm::ivec2 dimensions, const std::string& name) :
 	_surface(VK_NULL_HANDLE),
 	_windowShouldClose(false),
 	_pauseRendering(false),
+	_oneFrameOnly(false),
 	_isFullscreen(false) {
 
 	static Logger& logger = Logger::getLogger();
@@ -80,4 +81,14 @@ void Window::createSurface(VkInstance instance) {
 	}
 
 	logger.print("Created SDL window surface for Vulkan");
+}
+
+void Window::frameDone() {
+	_pauseRendering = true;
+	_oneFrameOnly = false;
+}
+
+void Window::doOneFrame() {
+	_pauseRendering = false;
+	_oneFrameOnly = true;
 }

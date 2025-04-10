@@ -42,6 +42,8 @@ public:
 	inline bool isFullscreen() const { return _isFullscreen; }
 	inline void setFullscreen(bool value) { _isFullscreen = value; }
 
+	inline bool oneFrameOnly() const { return _oneFrameOnly; }
+
 	// @brief Gets the current window size after resizing
 	void updateSize();
 
@@ -54,6 +56,9 @@ public:
 	//
 	// @param instance - Vulkan instance to connect the surface with
 	void createSurface(VkInstance instance);
+
+	void doOneFrame();
+	void frameDone();
 
 private:
 	struct SDL_Window* _window;
@@ -70,5 +75,6 @@ private:
 
 	bool _windowShouldClose;
 	bool _pauseRendering;
+	bool _oneFrameOnly;
 	bool _isFullscreen;
 };
