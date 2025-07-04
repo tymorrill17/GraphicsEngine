@@ -21,7 +21,8 @@ ParticleSystem2D::ParticleSystem2D(
 	_bbox(box),
 	_inputManager(inputManager),
 	_interactionHand(hand),
-	_simulationPaused(false) {
+	_simulationPaused(false),
+	_doOneFrame(false) {
 
 	_particles = new Particle2D[MAX_PARTICLES];
 	_densities = new float[MAX_PARTICLES];
@@ -96,7 +97,7 @@ void ParticleSystem2D::arrangeParticles() {
 static const int numThreads = 16;
 
 void ParticleSystem2D::update() {
-	if (_simulationPaused) {
+	if (_simulationPaused && !_doOneFrame) {
 		return;
 	}
 
@@ -153,6 +154,7 @@ void ParticleSystem2D::update() {
 		// Resolve collisions with the walls of the bounding box
 		resolveBoundaryCollisions();
 	}
+	frameDone();
 }
 
 void ParticleSystem2D::applyGravity(int particleIndex, float deltaTime) {
@@ -454,7 +456,11 @@ void ParticleSystem2D::assignInputEvents() {
 }
 
 void ParticleSystem2D::proceedFrame() {
+	_doOneFrame = true;
+}
 
+void ParticleSystem2D::frameDone() {
+	_doOneFrame = false;
 }
 
 // ----------------------------------------------- SMOOTHING KERNELS --------------------------------------------- //

@@ -77,6 +77,8 @@ protected:
 	float* _densities;
 	glm::vec2* _predictedParticlePositions;
 	bool _simulationPaused;
+	bool _doOneFrame;
+
 
 	// Compact Hashing
 	uint32_t* _particleIndices;
@@ -121,6 +123,7 @@ protected:
 	void assignInputEvents();
 
 	void proceedFrame();
+	void frameDone();
 };
 
 class SmoothingKernels2D {
