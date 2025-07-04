@@ -3,7 +3,13 @@
 Application::Application() : 
 	window({ APPLICATION_WIDTH, APPLICATION_HEIGHT }, "VulkanEngineV2"),
 	renderer(window),
-	inputManager(window) {}
+	inputManager(window) {
+	
+	static Logger& logger = Logger::getLogger(); // Initialize logger
+#ifdef _DEBUG
+	logger.activate(); // If debug mode, activate logger and print to the console
+#endif
+}
 
 struct GlobalUBO {
 	glm::mat4 projection;
@@ -16,19 +22,15 @@ void Application::run() {
 	static Timer& timer = Timer::getTimer();
 	static Gui& gui = Gui::getGui();
 
-	// Initialize the descriptor pool
+	// Initialize the rendering descriptor pool
 	std::vector<PoolSizeRatio> renderDescriptorSetSizes = {
 		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
 		//{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10},
 		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10},
 		//{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10}
 	};
-	static std::vector<PoolSizeRatio> computeDescriptorSetSizes = {
-		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}
-	};
 	DescriptorPool globalDescriptorPool(renderer.device(), 10, renderDescriptorSetSizes);
 
-	//glm::vec4 particleColor = glm::vec4{ glm::normalize(glm::vec3{ 25.0f, 118.0f, 210.0f }), 1.0f };
 	float particleColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 
 	// The particle info struct contains the Particle struct (pos and vel), as well as color and radius of each particle
@@ -184,13 +186,9 @@ void Application::run() {
 		globalParticleBuffer.writeBuffer(&particleInfo);
 		particleBuffer.writeBuffer(fluidParticles.particles());
 
-		renderer.renderAll(); // Have the renderer render all the render systems
+		renderer.renderAllSystems();
 
 		renderer.resizeCallback(); // Check for window resize and call the window resize callback function
-
-		/*if (window.oneFrameOnly()) {
-			window.frameDone();
-		}*/
 
 		guiRenderSystem.endFrame();
 	}

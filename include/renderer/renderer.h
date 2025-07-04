@@ -23,7 +23,7 @@ public:
 	~Renderer() = default;
 
 	// @brief Renders each RenderSystem to the frame and presents it
-	void renderAll();
+	void renderAllSystems();
 
 	// @brief Handles changes that need to be made when the window is resized
 	void resizeCallback();

@@ -56,7 +56,7 @@ Renderer& Renderer::addRenderSystem(RenderSystem* renderSystem) {
 	return *this;
 }
 
-void Renderer::renderAll() {
+void Renderer::renderAllSystems() {
 	// First, wait for the the last frame to render
 	VkFence currentRenderFence = getCurrentFrame().renderFence().handle();
 	vkWaitForFences(_device.device(), 1, &currentRenderFence, true, 1000000000);

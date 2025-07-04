@@ -5,12 +5,6 @@
 #include <sstream>
 
 int main(int argc, char* argv[]) {
-	static Logger& logger = Logger::getLogger(); // Initialize logger
-	static Timer& timer = Timer::getTimer(); // Initialize timer
-#ifdef _DEBUG
-	logger.activate(); // If debug mode, activate logger and print to the console
-#endif
-
 	// Application is the controller class
 	Application* app = new Application();
 	try {
@@ -19,7 +13,7 @@ int main(int argc, char* argv[]) {
 	catch (const std::exception& e) {
 		std::stringstream line;
 		line << "Caught exception: " << e.what();
-		logger.print(line.str());
+		std::cout << line.str() << std::endl;
 		return EXIT_FAILURE;
 	}
 	

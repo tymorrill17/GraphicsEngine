@@ -49,6 +49,7 @@ ParticleSystem2D::~ParticleSystem2D() {
 	delete _startIndices;
 }
 
+// @brief Returns an integer vector containing the indices of the grid cell the position corresponds to
 static glm::ivec2 getGridCell(glm::vec2 position, int cellSize) {
 	int cellX = static_cast<int>(position.x / cellSize);
 	int cellY = static_cast<int>(position.y / cellSize);
@@ -56,6 +57,7 @@ static glm::ivec2 getGridCell(glm::vec2 position, int cellSize) {
 	return glm::vec2{ cellX, cellY };
 }
 
+// @brief Returns the hash code of the given grid cell (modulo hashSize)
 static uint32_t hashGridCell(glm::ivec2 gridCell, uint32_t hashSize) {
 	const uint32_t p1 = 73856093;
 	const uint32_t p2 = 19349663;
@@ -65,7 +67,6 @@ static uint32_t hashGridCell(glm::ivec2 gridCell, uint32_t hashSize) {
 }
 
 void ParticleSystem2D::arrangeParticles() {
-	// TODO: Add these to an ImGui window later to play with on the fly
 	float spacing = _globalParticleInfo.radius + _globalParticleInfo.spacing;
 	glm::vec2 offset = glm::vec2();
 
@@ -82,8 +83,6 @@ void ParticleSystem2D::arrangeParticles() {
 		// Arrange the positions of the particles into grids
 		_particles[i].position.x = static_cast<float>((i) % gridSize) * 2.0f * spacing + offset.x;
 		_particles[i].position.y = static_cast<float>((i) / gridSize) * 2.0f * spacing + offset.y;
-		//_particles[i].position.x = distributionx(generator);
-		//_particles[i].position.y = distributiony(generator);
 
 		// Initialize the color of the particle to the default
 		_particles[i].color = glm::vec4{ _globalParticleInfo.defaultColor[0], _globalParticleInfo.defaultColor[1], _globalParticleInfo.defaultColor[2], _globalParticleInfo.defaultColor[3] };
@@ -108,8 +107,11 @@ void ParticleSystem2D::update() {
 	// Parallel batching setup
 	std::vector<int> batchSizes;
 	batchSizes.reserve(numThreads);
-	int batchSize = _globalParticleInfo.numParticles / numThreads;
-	int oddBatchOut = _globalParticleInfo.numParticles - (numThreads - 1) * batchSize; // In case numThreads doesn't divide numParticles evenly
+	int batchSize = _globalParticleInfo.numParticles / numThreads; // Divides the work to be done into equal batches
+	// In case numThreads doesn't divide numParticles evenly. If numThreads divides numParticles, then this should be equal to batchSize
+	int oddBatchOut = _globalParticleInfo.numParticles - (numThreads - 1) * batchSize;
+
+	// Fill batchSizes 
 	for (int i = 0; i < numThreads-1; i++) {
 		batchSizes.push_back(batchSize);
 	}
@@ -126,19 +128,14 @@ void ParticleSystem2D::update() {
 		updateSpatialLookup();
 
 		// Calculate the density of the fluid at each particle and populate _densities[]
-		//calculateParticleDensities();
 		calculateParticleDensitiesParallel(batchSizes);
 
+		// Wait for futures to get results
 		for (int i = 0; i < numThreads; i++) {
 			_futures[i].get();
 		}
 		_futures.clear();
 
-		// For each particle, first apply acceleration to the velocity
-		//for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-			// getAcceleration applies gravity, interaction force, and pressure force at once
-			//_particles[i].velocity += getForces(i) * subDeltaTime;
-		//}
 		applyForcesToVelocityParallel(batchSizes, subDeltaTime);
 		for (int i = 0; i < numThreads; i++) {
 			_futures[i].get();
@@ -250,11 +247,6 @@ glm::vec2 ParticleSystem2D::getForces(int particleIndex) {
 
 	// Get force due to pressure and convert it to acceleration by dividing by density
 	pressureAcceleration = calculatePressureForce(particleIndex) / _densities[particleIndex];
-	//std::cout << "density after pressure force calculation: " << _densities[particleIndex] << std::endl;
-
-	//std::cout << "gravityAcceleration: " << gravityAcceleration.x << ", " << gravityAcceleration.y << std::endl;
-	//std::cout << "handAcceleration: " << handAcceleration.x << ", " << handAcceleration.y << std::endl;
-	//std::cout << "pressureAcceleration: " << pressureAcceleration.x << ", " << pressureAcceleration.y << std::endl;
 	return handAcceleration + pressureAcceleration;
 }
 
@@ -343,6 +335,7 @@ void ParticleSystem2D::loopThroughNearbyPoints(glm::vec2 particlePosition, std::
 	}
 }
 
+// TODO: Make this more efficient using the same grid system as the fluid simulation calculations
 void ParticleSystem2D::resolveParticleCollisions() {
 	// Brute-force collision detection
 	for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
