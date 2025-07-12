@@ -50,7 +50,7 @@ public:
 	DescriptorLayoutBuilder& addBinding(uint32_t binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags);
 
 	// @brief Clears the builder of current bindings
-	void clear();
+	DescriptorLayoutBuilder& clear();
 
 	// @brief Builds a descriptor set layout with the current bindings
 	VkDescriptorSetLayout build();
@@ -67,16 +67,16 @@ public:
 	DescriptorWriter(const Device& device);
 
 	// @brief adds a VkDescriptorImageInfo to the imageInfos queue to be written using updateSet()
-	DescriptorWriter& writeImage(uint32_t binding, AllocatedImage& image, VkSampler sampler, VkDescriptorType descriptorType);
+	DescriptorWriter& addImageWrite(uint32_t binding, AllocatedImage& image, VkSampler sampler, VkDescriptorType descriptorType);
 
 	// @brief adds a VkDescriptorBufferInfo to the bufferInfos queue to be written using updateSet()
-	DescriptorWriter& writeBuffer(uint32_t binding, Buffer& buffer, VkDescriptorType descriptorType, size_t bufferSize = VK_WHOLE_SIZE, size_t offset = 0);
+	DescriptorWriter& addBufferWrite(uint32_t binding, Buffer& buffer, VkDescriptorType descriptorType, size_t offset = 0, size_t bufferSize = VK_WHOLE_SIZE);
 
 	// @brief clears the imageInfos, bufferInfos, and writes
-	void clear();
+	DescriptorWriter& clear();
 
 	// @brief updates and writes the set using the infos in _imageInfos and _bufferInfos
-	void updateDescriptorSet(VkDescriptorSet descriptor);
+	DescriptorWriter& updateDescriptorSet(VkDescriptorSet descriptor);
 
 private:
 	const Device& _device;

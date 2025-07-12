@@ -27,6 +27,7 @@ void Application::run() {
 		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
 		//{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10},
 		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10},
+		//{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 10},
 		//{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10}
 	};
 	DescriptorPool globalDescriptorPool(renderer.device(), 10, renderDescriptorSetSizes);
@@ -71,20 +72,14 @@ void Application::run() {
 	Buffer globalBuffer(renderer.device(), renderer.allocator(), sizeof(GlobalUBO), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, renderer.device().physicalDeviceProperies().limits.minUniformBufferOffsetAlignment);
 	globalBuffer.map();
 
-	int bufferSize = sizeof(Particle2D) * MAX_PARTICLES;
-
 	VkDescriptorSetLayout particleLayouts = renderer.descriptorLayoutBuilder().addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS).addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS).build();
 	VkDescriptorSet particleDescriptor = globalDescriptorPool.allocateDescriptorSet(particleLayouts);
-	// TODO: Refactor DescriptorWriter class to work properly. I don't want to clear the descriptor writer each time I want to write a buffer. It should just be that I can chain together the writes and then update.
-	renderer.descriptorWriter().writeBuffer(0, globalParticleBuffer, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER).updateDescriptorSet(particleDescriptor);
-	renderer.descriptorWriter().clear();
-	renderer.descriptorWriter().writeBuffer(1, particleBuffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).updateDescriptorSet(particleDescriptor);
-	renderer.descriptorWriter().clear();
+	renderer.descriptorWriter().addBufferWrite(0, globalParticleBuffer, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER).addBufferWrite(1, particleBuffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).updateDescriptorSet(particleDescriptor).clear();
 	renderer.descriptorLayoutBuilder().clear();
 
 	VkDescriptorSetLayout globalLayout = renderer.descriptorLayoutBuilder().addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS).build();
 	VkDescriptorSet globalDescriptor = globalDescriptorPool.allocateDescriptorSet(globalLayout);
-	renderer.descriptorWriter().writeBuffer(0, globalBuffer, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER).updateDescriptorSet(globalDescriptor);
+	renderer.descriptorWriter().addBufferWrite(0, globalBuffer, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER).updateDescriptorSet(globalDescriptor).clear();
 
 	// Create the render systems and add them to the renderer
 	ParticleRenderSystem particleRenderSystem(renderer, std::vector<VkDescriptorSetLayout>{particleLayouts, globalLayout}, std::vector<VkDescriptorSet>{particleDescriptor, globalDescriptor}, fluidParticles);
@@ -181,6 +176,7 @@ void Application::run() {
 			fluidParticles.arrangeParticles();
 		}
 
+		// HERE is where I would redo the DescriptorWriter calls to updateDescriptors with the updated buffer/offset size?
 		// Update/fill buffers
 		globalBuffer.writeBuffer(&globalBufferObject);
 		globalParticleBuffer.writeBuffer(&particleInfo);

@@ -10,7 +10,7 @@
 #include <iostream>
 #include <future>
 
-#define MAX_PARTICLES 100000
+#define MAX_PARTICLES 50000
 
 struct BoundingBox {
 	float left;
@@ -74,11 +74,16 @@ protected:
 	GlobalPhysicsInfo& _globalPhysics;
 	InputManager& _inputManager;
 	Hand* _interactionHand;
-	float* _densities;
+	//float** _densities;
+	std::vector<std::vector<float>> _densities;
 	glm::vec2* _predictedParticlePositions;
+	glm::vec2* _acceleration;
 	bool _simulationPaused;
 	bool _doOneFrame;
 
+	glm::vec2* _positionsk2;
+	glm::vec2* _positionsk3;
+	glm::vec2* _positionsk4;
 
 	// Compact Hashing
 	uint32_t* _particleIndices;
@@ -101,17 +106,17 @@ protected:
 	void resolveBoundaryCollisions();
 
 	// @brief Calculates the density at each particle
-	void calculateParticleDensities();
 	void calculateParticleDensitiesParallel(std::vector<int> batchSizes);
+	void calculateParticleDensitiesParallel(std::vector<int> batchSizes, int densityIndex, glm::vec2* positions);
 
 	// @brief Calculates the density at given position
 	float calculateDensity(glm::vec2 position);
 
 	// @brief applies acceleration due to gravity to the velocities of the particles
-	glm::vec2 getForces(int particleIndex);
-	void applyForcesToVelocityParallel(std::vector<int> batchSizes, float deltaTime);
+	glm::vec2 getAcceleration(int particleIndex);
+	void getAccelerationParallel(std::vector<int> batchSizes, float deltaTime);
 
-	glm::vec2 calculatePressureForce(int index);
+	glm::vec2 calculatePressureForce(int index, std::vector<float>& densities);
 
 	void applyGravity(int particleIndex, float deltaTime);
 

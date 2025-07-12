@@ -1,5 +1,7 @@
 #include "renderer/descriptor.h"
 
+// ---------------------------------------------- DESCRIPTOR POOL -----------------------------------------------------------------
+
 DescriptorPool::DescriptorPool(const Device& device, uint32_t maxSets, std::span<PoolSizeRatio> poolSizeRatios) : 
 	_device(device), _descriptorPool(VK_NULL_HANDLE) {
 
@@ -43,6 +45,8 @@ VkDescriptorSet DescriptorPool::allocateDescriptorSet(VkDescriptorSetLayout layo
 	return set;
 }
 
+// ---------------------------------------------- DESCRIPTOR LAYOUT BUILDER -----------------------------------------------------------------
+
 DescriptorLayoutBuilder::DescriptorLayoutBuilder(const Device& device) : _device(device) {}
 
 DescriptorLayoutBuilder& DescriptorLayoutBuilder::addBinding(uint32_t binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags) {
@@ -56,8 +60,9 @@ DescriptorLayoutBuilder& DescriptorLayoutBuilder::addBinding(uint32_t binding, V
 	return *this;
 }
 
-void DescriptorLayoutBuilder::clear() {
+DescriptorLayoutBuilder& DescriptorLayoutBuilder::clear() {
 	_bindings.clear();
+	return *this;
 }
 
 VkDescriptorSetLayout DescriptorLayoutBuilder::build() {
@@ -75,9 +80,11 @@ VkDescriptorSetLayout DescriptorLayoutBuilder::build() {
 	return layout;
 }
 
+// ---------------------------------------------- DESCRIPTOR WRITER -----------------------------------------------------------------
+
 DescriptorWriter::DescriptorWriter(const Device& device) : _device(device) {}
 
-DescriptorWriter& DescriptorWriter::writeImage(uint32_t binding, AllocatedImage& image, VkSampler sampler, VkDescriptorType descriptorType) {
+DescriptorWriter& DescriptorWriter::addImageWrite(uint32_t binding, AllocatedImage& image, VkSampler sampler, VkDescriptorType descriptorType) {
 	VkDescriptorImageInfo& imageInfo = _imageInfos.emplace_back( VkDescriptorImageInfo {
 		.sampler = sampler,
 		.imageView = image.imageView(),
@@ -97,8 +104,8 @@ DescriptorWriter& DescriptorWriter::writeImage(uint32_t binding, AllocatedImage&
 	return *this;
 }
 
-DescriptorWriter& DescriptorWriter::writeBuffer(uint32_t binding, Buffer& buffer, VkDescriptorType descriptorType, size_t bufferSize, size_t offset) {
-	VkDescriptorBufferInfo bufferInfo = _bufferInfos.emplace_back(VkDescriptorBufferInfo{
+DescriptorWriter& DescriptorWriter::addBufferWrite(uint32_t binding, Buffer& buffer, VkDescriptorType descriptorType, size_t offset, size_t bufferSize) {
+	VkDescriptorBufferInfo& bufferInfo = _bufferInfos.emplace_back(VkDescriptorBufferInfo {
 		.buffer = buffer.buffer(),
 		.offset = offset,
 		.range = bufferSize
@@ -117,18 +124,19 @@ DescriptorWriter& DescriptorWriter::writeBuffer(uint32_t binding, Buffer& buffer
 	return *this;
 }
 
-void DescriptorWriter::updateDescriptorSet(VkDescriptorSet descriptor) {
+DescriptorWriter& DescriptorWriter::updateDescriptorSet(VkDescriptorSet descriptor) {
 	for (VkWriteDescriptorSet& write : _writes) {
 		write.dstSet = descriptor;
 	}
-
 	vkUpdateDescriptorSets(_device.device(), static_cast<uint32_t>(_writes.size()), _writes.data(), 0, nullptr);
+	return *this;
 }
 
-void DescriptorWriter::clear() {
+DescriptorWriter& DescriptorWriter::clear() {
 	_imageInfos.clear();
 	_bufferInfos.clear();
 	_writes.clear();
+	return *this;
 }
 
 
