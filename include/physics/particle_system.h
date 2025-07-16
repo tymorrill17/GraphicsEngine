@@ -29,6 +29,9 @@ struct GlobalParticleInfo {
 struct Particle2D {
 	glm::vec2 position{ 0.0f, 0.0f };
 	glm::vec2 velocity{ 0.0f, 0.0f };
+};
+
+struct RenderedParticle2D : Particle2D {
 	glm::vec4 color{ 1.0f };
 };
 
@@ -68,7 +71,7 @@ public:
 	GlobalPhysicsInfo& physicsInfo() { return _globalPhysics; }
 
 protected:
-	Particle2D* _particles; // Array of 2D particles
+	RenderedParticle2D* _particles; // Array of 2D particles
 	BoundingBox& _bbox;
 	GlobalParticleInfo& _globalParticleInfo;
 	GlobalPhysicsInfo& _globalPhysics;
@@ -81,9 +84,9 @@ protected:
 	bool _simulationPaused;
 	bool _doOneFrame;
 
-	glm::vec2* _positionsk2;
-	glm::vec2* _positionsk3;
-	glm::vec2* _positionsk4;
+	Particle2D* _particles2;
+	Particle2D* _particles3;
+	Particle2D* _particles4;
 
 	// Compact Hashing
 	uint32_t* _particleIndices;
@@ -97,7 +100,7 @@ protected:
 
 	void sortSpatialArrays();
 
-	void loopThroughNearbyPoints(glm::vec2 particlePosition, std::function<void(glm::vec2, uint32_t)> callback);
+	void loopThroughNearbyPoints(glm::vec2 particlePosition, Particle2D* particles, std::function<void(glm::vec2, uint32_t)> callback);
 
 	// @brief Resolves collisions between particles
 	void resolveParticleCollisions();
@@ -106,17 +109,16 @@ protected:
 	void resolveBoundaryCollisions();
 
 	// @brief Calculates the density at each particle
-	void calculateParticleDensitiesParallel(std::vector<int> batchSizes);
-	void calculateParticleDensitiesParallel(std::vector<int> batchSizes, int densityIndex, glm::vec2* positions);
+	void calculateParticleDensitiesParallel(std::vector<int> batchSizes, int densityIndex, Particle2D* particles);
 
 	// @brief Calculates the density at given position
-	float calculateDensity(glm::vec2 position);
+	float calculateDensity(uint32_t particleIndex, Particle2D* particles);
 
 	// @brief applies acceleration due to gravity to the velocities of the particles
-	glm::vec2 getAcceleration(int particleIndex);
-	void getAccelerationParallel(std::vector<int> batchSizes, float deltaTime);
+	glm::vec2 getAcceleration(uint32_t particleIndex, uint32_t densityIndex, Particle2D* particles);
+	void getAccelerationParallel(std::vector<int> batchSizes, glm::vec2* outputAccel, Particle2D* particles, uint32_t densityIndex);
 
-	glm::vec2 calculatePressureForce(int index, std::vector<float>& densities);
+	glm::vec2 calculatePressureForce(int index, Particle2D* particles, std::vector<float>& densities);
 
 	void applyGravity(int particleIndex, float deltaTime);
 

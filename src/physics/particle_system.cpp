@@ -24,7 +24,7 @@ ParticleSystem2D::ParticleSystem2D(
 	_simulationPaused(false),
 	_doOneFrame(false) {
 
-	_particles = new Particle2D[MAX_PARTICLES];
+	_particles = new RenderedParticle2D[MAX_PARTICLES];
 	_densities.resize(4);
 	for (int i = 0; i < 4; i++) {
 		_densities[i].resize(MAX_PARTICLES);
@@ -34,20 +34,19 @@ ParticleSystem2D::ParticleSystem2D(
 	_spatialLookup = new uint32_t[MAX_PARTICLES];
 	_startIndices = new uint32_t[MAX_PARTICLES];
 
-	_positionsk2 = new glm::vec2[MAX_PARTICLES];
-	_positionsk3 = new glm::vec2[MAX_PARTICLES];
-	_positionsk4 = new glm::vec2[MAX_PARTICLES];
-
-
+	_particles2 = new Particle2D[MAX_PARTICLES];
+	_particles3 = new Particle2D[MAX_PARTICLES];
+	_particles4 = new Particle2D[MAX_PARTICLES];
 
 	// Initialize all entries to 0 in case we add more
 	for (int i = 0; i < MAX_PARTICLES; i++) {
 		for (int j = 0; j < 4; j++) {
 			_densities[j][i] = 0.f;
 		}
-		_positionsk2[i] = { 0.f, 0.f };
-		_positionsk3[i] = { 0.f, 0.f };
-		_positionsk2[i] = { 0.f, 0.f };
+		_particles2[i].position = { 0.f, 0.f }; _particles2[i].velocity = { 0.f, 0.f };
+		_particles3[i].position = { 0.f, 0.f }; _particles3[i].velocity = { 0.f, 0.f };
+		_particles4[i].position = { 0.f, 0.f }; _particles4[i].velocity = { 0.f, 0.f };
+
 		_particleIndices[i] = i;
 		_spatialLookup[i] = 0;
 		_startIndices[i] = INT_MAX;
@@ -57,10 +56,16 @@ ParticleSystem2D::ParticleSystem2D(
 }
 
 ParticleSystem2D::~ParticleSystem2D() {
-	delete _acceleration;
-	delete _particleIndices;
-	delete _spatialLookup;
-	delete _startIndices;
+	delete[] _particles;
+
+	delete[] _acceleration;
+	delete[] _particleIndices;
+	delete[] _spatialLookup;
+	delete[] _startIndices;
+
+	delete[] _particles2;
+	delete[] _particles3;
+	delete[] _particles4;
 }
 
 // @brief Returns an integer vector containing the indices of the grid cell the position corresponds to
@@ -131,9 +136,9 @@ void ParticleSystem2D::update() {
 	}
 	batchSizes.push_back(oddBatchOut);
 
-	glm::vec2* l2 = new glm::vec2[_globalParticleInfo.numParticles];
-	glm::vec2* l3 = new glm::vec2[_globalParticleInfo.numParticles];
-	glm::vec2* l4 = new glm::vec2[_globalParticleInfo.numParticles];
+	glm::vec2* k2 = new glm::vec2[_globalParticleInfo.numParticles];
+	glm::vec2* k3 = new glm::vec2[_globalParticleInfo.numParticles];
+	glm::vec2* k4 = new glm::vec2[_globalParticleInfo.numParticles];
 
 	for (int i = 0; i < _globalPhysics.nSubsteps; i++) {
 
@@ -143,7 +148,7 @@ void ParticleSystem2D::update() {
 		updateSpatialLookup();
 
 		// Finds density at current r_i
-		calculateParticleDensitiesParallel(batchSizes);
+		calculateParticleDensitiesParallel(batchSizes, 0, _particles);
 
 		// Wait for futures to get results
 		for (int i = 0; i < numThreads; i++) {
@@ -152,7 +157,7 @@ void ParticleSystem2D::update() {
 		_futures.clear();
 
 		// Does an euler step of dv/dt to get velocity at the (i+1)th step
-		getAccelerationParallel(batchSizes, subDeltaTime);
+		getAccelerationParallel(batchSizes, _acceleration, _particles, 0);
 		for (int i = 0; i < numThreads; i++) {
 			_futures[i].get();
 		}
@@ -161,22 +166,56 @@ void ParticleSystem2D::update() {
 
 		// Find k2 and l2
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-			l2[i] = _particles[i].velocity + halfDeltaTime * _acceleration[i];
-			_positionsk2[i] = _particles[i].position + _particles[i].velocity * halfDeltaTime;
+			_particles2[i].velocity = _particles[i].velocity + halfDeltaTime * _acceleration[i]; // This is l2
+			_particles2[i].position = _particles[i].position + _particles[i].velocity * halfDeltaTime;
 		}
-		calculateParticleDensitiesParallel(batchSizes, 1, _positionsk2);
+		calculateParticleDensitiesParallel(batchSizes, 1, _particles2);
+		for (int i = 0; i < numThreads; i++) {
+			_futures[i].get();
+		}
+		_futures.clear();
+		getAccelerationParallel(batchSizes, k2, _particles2, 1);
 		for (int i = 0; i < numThreads; i++) {
 			_futures[i].get();
 		}
 		_futures.clear();
 
 		// Find k3 and l3
+		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+			_particles3[i].velocity = _particles[i].velocity + halfDeltaTime * k2[i]; // This is l2
+			_particles3[i].position = _particles[i].position + _particles2[i].velocity * halfDeltaTime;
+		}
+		calculateParticleDensitiesParallel(batchSizes, 2, _particles3);
+		for (int i = 0; i < numThreads; i++) {
+			_futures[i].get();
+		}
+		_futures.clear();
+		getAccelerationParallel(batchSizes, k3, _particles3, 2);
+		for (int i = 0; i < numThreads; i++) {
+			_futures[i].get();
+		}
+		_futures.clear();
 
 		// Find k4 and l4
+		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+			_particles4[i].velocity = _particles[i].velocity + halfDeltaTime * k3[i]; // This is l2
+			_particles4[i].position = _particles[i].position + _particles3[i].velocity * halfDeltaTime;
+		}
+		calculateParticleDensitiesParallel(batchSizes, 3, _particles4);
+		for (int i = 0; i < numThreads; i++) {
+			_futures[i].get();
+		}
+		_futures.clear();
+		getAccelerationParallel(batchSizes, k4, _particles4, 3);
+		for (int i = 0; i < numThreads; i++) {
+			_futures[i].get();
+		}
+		_futures.clear();
 
 		// Then combine it all to get the next position
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-			_particles[i].position += _particles[i].velocity * subDeltaTime;
+			_particles[i].position += subDeltaTime / 6.f * (_acceleration[i] + 2.f * k2[i] + 2.f * k3[i] + k4[i]);
+			_particles[i].velocity += subDeltaTime / 6.f * (_particles[i].velocity + 2.f * _particles2[i].velocity + 2.f * _particles3[i].velocity + _particles4[i].velocity);
 		}
 
 		// Resolve collisions between particles
@@ -187,7 +226,9 @@ void ParticleSystem2D::update() {
 	}
 	frameDone();
 
-	delete l2;
+	delete[] k2;
+	delete[] k3;
+	delete[] k4;
 }
 
 void ParticleSystem2D::resolveBoundaryCollisions() {
@@ -211,17 +252,17 @@ void ParticleSystem2D::resolveBoundaryCollisions() {
 	}
 }
 
-float ParticleSystem2D::calculateDensity(glm::vec2 position) {
+float ParticleSystem2D::calculateDensity(uint32_t particleIndex, Particle2D* particles) {
 	float density = 0.0f;
 	// Use the locations of each particle to calculate the density at position, with the smoothing function lessening the impact of particles further away
-	loopThroughNearbyPoints(position, [&](glm::vec2 dist, int particleIndex) {
+	loopThroughNearbyPoints(particles[particleIndex].position, particles, [&](glm::vec2 dist, int particleIndex) {
 		float squareDst = glm::dot(dist, dist);
 		density += SmoothingKernels2D::smooth(squareDst, _globalPhysics.densitySmoothingRadius);
 	});
 	return density;
 }
 
-void ParticleSystem2D::calculateParticleDensitiesParallel(std::vector<int> batchSizes) {
+void ParticleSystem2D::calculateParticleDensitiesParallel(std::vector<int> batchSizes, int densityIndex, Particle2D* particles) {
 	// We want to calculate the density at each particle location all at once.
 	int start = 0;
 	int end = 0;
@@ -230,33 +271,13 @@ void ParticleSystem2D::calculateParticleDensitiesParallel(std::vector<int> batch
 		end = start + batchSizes[i];
 		_futures.push_back(std::async(std::launch::async, [&](int startIndex, int endIndex) {
 			for (int i = startIndex; i < endIndex; i++) {
-				_densities[0][i] = calculateDensity(_particles[i].position); // for k1
-				//_densities[1][i] = calculateDensity(_positionsk2[i]); // for k2
-				//_densities[2][i] = calculateDensity(_positionsk3[i]); // for k3
-				//_densities[3][i] = calculateDensity(_positionsk4[i]); // for k4
-			}
-			}, start, end));
-	}
-}
-void ParticleSystem2D::calculateParticleDensitiesParallel(std::vector<int> batchSizes, int densityIndex, glm::vec2* positions) {
-	// We want to calculate the density at each particle location all at once.
-	int start = 0;
-	int end = 0;
-	for (int i = 0; i < numThreads; i++) {
-		start = end;
-		end = start + batchSizes[i];
-		_futures.push_back(std::async(std::launch::async, [&](int startIndex, int endIndex) {
-			for (int i = startIndex; i < endIndex; i++) {
-				_densities[densityIndex][i] = calculateDensity(positions[i]); // for k1
-				//_densities[1][i] = calculateDensity(_positionsk2[i]); // for k2
-				//_densities[2][i] = calculateDensity(_positionsk3[i]); // for k3
-				//_densities[3][i] = calculateDensity(_positionsk4[i]); // for k4
+				_densities[densityIndex][i] = calculateDensity(i, particles); // for k1
 			}
 		}, start, end));
 	}
 }
 
-glm::vec2 ParticleSystem2D::getAcceleration(int particleIndex) {
+glm::vec2 ParticleSystem2D::getAcceleration(uint32_t particleIndex, uint32_t densityIndex, Particle2D* particles) {
 	static Timer& timer = Timer::getTimer();
 
 	// initialize each acceleration type
@@ -267,7 +288,7 @@ glm::vec2 ParticleSystem2D::getAcceleration(int particleIndex) {
 	if (_interactionHand->isInteracting()) {
 		float interactionStrength = _interactionHand->action() == HandAction::pulling ? _interactionHand->strengthFactor : -_interactionHand->strengthFactor;
 		// Hand is interacting, so find the vector from the hand to the particle and find its squared distance
-		glm::vec2 particleToHand = _interactionHand->position() - _particles[particleIndex].position;
+		glm::vec2 particleToHand = _interactionHand->position() - particles[particleIndex].position;
 		float sqrDst = glm::dot(particleToHand, particleToHand);
 
 		// If particle is in hand radius, change acceleration on particle
@@ -276,17 +297,17 @@ glm::vec2 ParticleSystem2D::getAcceleration(int particleIndex) {
 			// Adding acceleration based on how far away the hand is... Could potentially use one of our smoothing functions for this
 			float centerFactor = 1 - dst / _interactionHand->radius;
 			particleToHand = particleToHand / dst; // Normalize the direction vector
-			handAcceleration += (particleToHand * interactionStrength - _particles[particleIndex].velocity) * centerFactor;
+			handAcceleration += (particleToHand * interactionStrength - particles[particleIndex].velocity) * centerFactor;
 		}
 	}
 
 	// Get force due to pressure and convert it to acceleration by dividing by density
-	pressureAcceleration = calculatePressureForce(particleIndex, _densities[0]) / _densities[0][particleIndex];
+	pressureAcceleration = calculatePressureForce(particleIndex, particles, _densities[densityIndex]) / _densities[densityIndex][particleIndex];
 	glm::vec2 gravityAcceleration = _globalPhysics.gravity * down;
 	return handAcceleration + pressureAcceleration + gravityAcceleration;
 }
 
-void ParticleSystem2D::getAccelerationParallel(std::vector<int> batchSizes, float deltaTime) {
+void ParticleSystem2D::getAccelerationParallel(std::vector<int> batchSizes, glm::vec2* outputAccel, Particle2D* particles, uint32_t densityIndex) {
 	int start = 0;
 	int end = 0;
 	for (int i = 0; i < numThreads; i++) {
@@ -295,9 +316,9 @@ void ParticleSystem2D::getAccelerationParallel(std::vector<int> batchSizes, floa
 		_futures.push_back(std::async(std::launch::async, [&](int startIndex, int endIndex) {
 			for (int i = startIndex; i < endIndex; i++) {
 				// getAcceleration applies gravity, interaction force, and pressure force at once
-				_acceleration[i] = getAcceleration(i); // This is dv/dt (and k1)
+				outputAccel[i] = getAcceleration(i, densityIndex, particles); // This is dv/dt (and k1)
 			}
-		}, start, end));
+			}, start, end));
 	}
 }
 
@@ -319,11 +340,10 @@ float ParticleSystem2D::getSharedPressure(float density, float otherDensity) {
 	return (pressure + otherPressure) * 0.5f;
 }
 
-glm::vec2 ParticleSystem2D::calculatePressureForce(int index, std::vector<float>& densities) {
+glm::vec2 ParticleSystem2D::calculatePressureForce(int index, Particle2D* particles, std::vector<float>& densities) {
 	glm::vec2 force{ 0.0f, 0.0f };
-	glm::vec2 pos = usePredictedPositions ? _predictedParticlePositions[index] : _particles[index].position;
 	// We are finding a field quantity like density, so we use the SPH equation. This involves looping over each particle that contributes to the quantity
-	loopThroughNearbyPoints(pos, [&](glm::vec2 dist, int particleIndex) {
+	loopThroughNearbyPoints(particles[index].position, particles, [&](glm::vec2 dist, int particleIndex) {
 		if (index == particleIndex) return; // The particle itself doesn't contribute to the pressure force it feels
 
 		float squareDst = glm::dot(dist, dist);
@@ -343,7 +363,7 @@ static const std::vector<glm::ivec2> gridCellOffsets {
 	{-1, 0}, {-1, 1}, {-1, -1}
 };
 
-void ParticleSystem2D::loopThroughNearbyPoints(glm::vec2 particlePosition, std::function<void(glm::vec2, uint32_t)> callback) {
+void ParticleSystem2D::loopThroughNearbyPoints(glm::vec2 particlePosition, Particle2D* particles, std::function<void(glm::vec2, uint32_t)> callback) {
 	// Get the center grid cell
 	glm::ivec2 center = getGridCell(particlePosition, _globalPhysics.densitySmoothingRadius);
 	float squareSmoothingRadius = _globalPhysics.densitySmoothingRadius * _globalPhysics.densitySmoothingRadius;
@@ -358,11 +378,7 @@ void ParticleSystem2D::loopThroughNearbyPoints(glm::vec2 particlePosition, std::
 
 			uint32_t particleIndex = _particleIndices[i];
 			glm::vec2 dist{ 0.f, 0.f };
-			if (usePredictedPositions) {
-				dist = _predictedParticlePositions[particleIndex] - particlePosition;
-			} else {
-				dist = _particles[particleIndex].position - particlePosition;
-			}
+			dist = particles[particleIndex].position - particlePosition;
 			float squareDst = glm::dot(dist, dist);
 			if (squareDst <= squareSmoothingRadius) {
 				callback(dist, particleIndex);
