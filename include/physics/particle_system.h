@@ -79,7 +79,6 @@ protected:
 	Hand* _interactionHand;
 	//float** _densities;
 	std::vector<std::vector<float>> _densities;
-	glm::vec2* _predictedParticlePositions;
 	glm::vec2* _acceleration;
 	bool _simulationPaused;
 	bool _doOneFrame;

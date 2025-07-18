@@ -39,7 +39,7 @@ void Application::run() {
 		.defaultColor = { 1.0f, 1.0f, 1.0f, 1.0f },
 		.radius = 0.03f,
 		.spacing = 0.1f,
-		.numParticles = 500
+		.numParticles = 25
 	};
 
 	GlobalPhysicsInfo physicsInfo{
