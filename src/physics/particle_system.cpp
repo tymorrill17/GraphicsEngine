@@ -33,15 +33,17 @@ ParticleSystem2D::ParticleSystem2D(
 	_startIndices = new uint32_t[MAX_PARTICLES];
 
 	_particles2 = new Particle2D[MAX_PARTICLES];
-	_particles3 = new Particle2D[MAX_PARTICLES];
-	_particles4 = new Particle2D[MAX_PARTICLES];
+	// Uncomment for RK4 (slower and didn't have much improvement in terms of stability...)
+	//_particles3 = new Particle2D[MAX_PARTICLES];
+	//_particles4 = new Particle2D[MAX_PARTICLES];
 
 	// Initialize all entries to 0 in case we add more
 	for (int i = 0; i < MAX_PARTICLES; i++) {
 		_densities[i] = 0.0f;
 		_particles2[i].position = { 0.f, 0.f }; _particles2[i].velocity = { 0.f, 0.f };
-		_particles3[i].position = { 0.f, 0.f }; _particles3[i].velocity = { 0.f, 0.f };
-		_particles4[i].position = { 0.f, 0.f }; _particles4[i].velocity = { 0.f, 0.f };
+		// Uncomment for RK4 (slower and didn't have much improvement in terms of stability...)
+		//_particles3[i].position = { 0.f, 0.f }; _particles3[i].velocity = { 0.f, 0.f };
+		//_particles4[i].position = { 0.f, 0.f }; _particles4[i].velocity = { 0.f, 0.f };
 
 		_particleIndices[i] = i;
 		_spatialLookup[i] = 0;
@@ -61,8 +63,9 @@ ParticleSystem2D::~ParticleSystem2D() {
 	delete[] _startIndices;
 
 	delete[] _particles2;
-	delete[] _particles3;
-	delete[] _particles4;
+	// Uncomment for RK4 (slower and didn't have much improvement in terms of stability...)
+	//delete[] _particles3;
+	//delete[] _particles4;
 }
 
 // @brief Returns an integer vector containing the indices of the grid cell the position corresponds to
@@ -118,7 +121,6 @@ void ParticleSystem2D::update() {
 
 	static Timer& timer = Timer::getTimer();
 	float subDeltaTime = timer.frameTime() / _globalPhysics.nSubsteps;
-	//subDeltaTime = 1.f / 120.f;
 	//float predictionStep = 1.f / 120.f; // Used to gain some stability with the position-prediction code. I should refine this later on.
 
 	// Parallel batching setup
@@ -135,8 +137,9 @@ void ParticleSystem2D::update() {
 	batchSizes.push_back(oddBatchOut);
 
 	glm::vec2* l2 = new glm::vec2[_globalParticleInfo.numParticles];
-	glm::vec2* l3 = new glm::vec2[_globalParticleInfo.numParticles];
-	glm::vec2* l4 = new glm::vec2[_globalParticleInfo.numParticles];
+	// Uncomment for RK4 (slower and didn't have much improvement in terms of stability...)
+	//glm::vec2* l3 = new glm::vec2[_globalParticleInfo.numParticles];
+	//glm::vec2* l4 = new glm::vec2[_globalParticleInfo.numParticles];
 
 	for (int i = 0; i < _globalPhysics.nSubsteps; i++) {
 
@@ -164,10 +167,11 @@ void ParticleSystem2D::update() {
 
 		// Find k2 and l2
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+			// Uncomment for RK4 (slower and didn't have much improvement in terms of stability...)
 			//_particles2[i].position = _particles[i].position + _particles[i].velocity * halfDeltaTime;
 			//_particles2[i].velocity = _particles[i].velocity + halfDeltaTime * _acceleration[i]; // This is k2
-			_particles2[i].position = _particles[i].position + _particles[i].velocity * 2.0f * halfDeltaTime;
-			_particles2[i].velocity = _particles[i].velocity + 2.0f * halfDeltaTime * _acceleration[i]; // This is k2
+			_particles2[i].velocity = _particles[i].velocity + subDeltaTime * _acceleration[i]; // This is k2
+			_particles2[i].position = _particles[i].position + subDeltaTime * _particles[i].velocity;
 		}
 		updateSpatialLookup<Particle2D>(_particles2);
 		calculateParticleDensitiesParallel<Particle2D>(batchSizes, _particles2);
@@ -181,44 +185,48 @@ void ParticleSystem2D::update() {
 		}
 		_futures.clear();
 
-		// Find k3 and l3
-		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-			_particles3[i].position = _particles[i].position + _particles2[i].velocity * halfDeltaTime;
-			_particles3[i].velocity = _particles[i].velocity + halfDeltaTime * l2[i]; // This is k3
-		}
-		updateSpatialLookup<Particle2D>(_particles3);
-		calculateParticleDensitiesParallel<Particle2D>(batchSizes, _particles3);
-		for (int i = 0; i < numThreads; i++) {
-			_futures[i].get();
-		}
-		_futures.clear();
-		getAccelerationParallel<Particle2D>(batchSizes, l3, _particles3);
-		for (int i = 0; i < numThreads; i++) {
-			_futures[i].get();
-		}
-		_futures.clear();
+		// Uncomment for RK4 (slower and didn't have much improvement in terms of stability...)
+		//// Find k3 and l3
+		//for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+		//	_particles3[i].velocity = _particles[i].velocity + halfDeltaTime * l2[i]; // This is k3
+		//	_particles3[i].position = _particles[i].position + _particles2[i].velocity * halfDeltaTime;
+		//}
+		//updateSpatialLookup<Particle2D>(_particles3);
+		//calculateParticleDensitiesParallel<Particle2D>(batchSizes, _particles3);
+		//for (int i = 0; i < numThreads; i++) {
+		//	_futures[i].get();
+		//}
+		//_futures.clear();
+		//getAccelerationParallel<Particle2D>(batchSizes, l3, _particles3);
+		//for (int i = 0; i < numThreads; i++) {
+		//	_futures[i].get();
+		//}
+		//_futures.clear();
 
-		// Find k4 and l4
-		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-			_particles4[i].position = _particles[i].position + _particles3[i].velocity * 2.f * halfDeltaTime;
-			_particles4[i].velocity = _particles[i].velocity + 2.f * halfDeltaTime * l3[i]; // This is k4
-		}
-		 updateSpatialLookup<Particle2D>(_particles4);
-		calculateParticleDensitiesParallel<Particle2D>(batchSizes, _particles4);
-		for (int i = 0; i < numThreads; i++) {
-			_futures[i].get();
-		}
-		_futures.clear();
-		getAccelerationParallel<Particle2D>(batchSizes, l4, _particles4);
-		for (int i = 0; i < numThreads; i++) {
-			_futures[i].get();
-		}
-		_futures.clear();
+		//// Find k4 and l4
+		//for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
+		//	_particles4[i].velocity = _particles[i].velocity + 2.f * halfDeltaTime * l3[i]; // This is k4
+		//	_particles4[i].position = _particles[i].position + _particles3[i].velocity * 2.f * halfDeltaTime;
+		//}
+		// updateSpatialLookup<Particle2D>(_particles4);
+		//calculateParticleDensitiesParallel<Particle2D>(batchSizes, _particles4);
+		//for (int i = 0; i < numThreads; i++) {
+		//	_futures[i].get();
+		//}
+		//_futures.clear();
+		//getAccelerationParallel<Particle2D>(batchSizes, l4, _particles4);
+		//for (int i = 0; i < numThreads; i++) {
+		//	_futures[i].get();
+		//}
+		//_futures.clear();
 
 		// Then combine it all to get the next position
 		for (int i = 0; i < _globalParticleInfo.numParticles; i++) {
-			_particles[i].position += subDeltaTime / 6.f * (_particles[i].velocity + 2.f * _particles2[i].velocity + 2.f * _particles3[i].velocity + _particles4[i].velocity);
-			_particles[i].velocity += subDeltaTime / 6.f * (_acceleration[i] + 2.f * l2[i] + 2.f * l3[i] + l4[i]);
+			// Uncomment for RK4 (slower and didn't have much improvement in terms of stability...)
+			//_particles[i].velocity += subDeltaTime / 6.f * (_acceleration[i] + 2.f * l2[i] + 2.f * l3[i] + l4[i]);
+			//_particles[i].position += subDeltaTime / 6.f * (_particles[i].velocity + 2.f * _particles2[i].velocity + 2.f * _particles3[i].velocity + _particles4[i].velocity);
+			_particles[i].velocity += halfDeltaTime * (_acceleration[i] + l2[i]);
+			_particles[i].position += halfDeltaTime * (_particles[i].velocity + _particles2[i].velocity);
 		}
 
 		// Resolve collisions between particles
@@ -230,8 +238,9 @@ void ParticleSystem2D::update() {
 	frameDone();
 
 	delete[] l2;
-	delete[] l3;
-	delete[] l4;
+	// Uncomment for RK4 (slower and didn't have much improvement in terms of stability...)
+	//delete[] l3;
+	//delete[] l4;
 }
 
 void ParticleSystem2D::resolveBoundaryCollisions() {

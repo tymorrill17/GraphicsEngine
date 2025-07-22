@@ -38,24 +38,24 @@ void Application::run() {
 	GlobalParticleInfo particleInfo{
 		.defaultColor = { 1.0f, 1.0f, 1.0f, 1.0f },
 		.radius = 0.03f,
-		.spacing = 0.1f,
-		.numParticles = 25
+		.spacing = 0.025f,
+		.numParticles = 1600
 	};
 
 	GlobalPhysicsInfo physicsInfo{
 		.gravity = 0.f,
 		.boundaryDampingFactor = 0.9f,
 		.collisionDampingFactor = 0.9f,
-		.densitySmoothingRadius = 1.f,
-		.pressureConstant = 5.f,
-		.restDensity = 0.f,
+		.densitySmoothingRadius = 0.3f,
+		.pressureConstant = 20.f,
+		.restDensity = 5.f,
 		.nSubsteps = 1,
 	};
 
 	BoundingBox box{};
 
-	float handRadius = 0.4f;
-	float interactionStrength = 4.f;
+	float handRadius = 1.f;
+	float interactionStrength = 50.f;
 	Hand mouseInteraction(handRadius, interactionStrength, coordinateScale);
 
 	// The constructor of the particle system initializes the positions of the particles to a grid

@@ -84,8 +84,9 @@ protected:
 	bool _doOneFrame;
 
 	Particle2D* _particles2;
-	Particle2D* _particles3;
-	Particle2D* _particles4;
+	// Uncomment for RK4 (slower and didn't have much improvement in terms of stability...)
+	//Particle2D* _particles3;
+	//Particle2D* _particles4;
 
 	// Compact Hashing
 	uint32_t* _particleIndices;
