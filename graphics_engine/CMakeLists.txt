@@ -71,31 +71,3 @@ if(ENGINE_SPIRV_BINARY_FILES)
     add_custom_target(EngineShaders DEPENDS ${ENGINE_SPIRV_BINARY_FILES})
     add_dependencies(VulkanEngine EngineShaders)
 endif()
-
-# Function to help projects compile their own shaders
-function(compile_project_shaders PROJECT_NAME PROJECT_DIR)
-    file(GLOB_RECURSE PROJECT_GLSL_FILES
-        "${PROJECT_DIR}/shaders/*.frag"
-        "${PROJECT_DIR}/shaders/*.vert"
-        "${PROJECT_DIR}/shaders/*.comp"
-    )
-    
-    set(PROJECT_SPIRV_FILES "")
-    foreach(GLSL ${PROJECT_GLSL_FILES})
-        get_filename_component(FILE_NAME ${GLSL} NAME)
-        set(SPIRV "${PROJECT_DIR}/shaders/${FILE_NAME}.spv")
-        
-        add_custom_command(
-            OUTPUT ${SPIRV}
-            COMMAND ${GLSL_VALIDATOR} -V ${GLSL} -o ${SPIRV}
-            DEPENDS ${GLSL}
-            COMMENT "Compiling ${PROJECT_NAME} shader ${FILE_NAME}"
-        )
-        list(APPEND PROJECT_SPIRV_FILES ${SPIRV})
-    endforeach()
-    
-    if(PROJECT_SPIRV_FILES)
-        add_custom_target(${PROJECT_NAME}Shaders DEPENDS ${PROJECT_SPIRV_FILES})
-        add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}Shaders)
-    endif()
-endfunction()

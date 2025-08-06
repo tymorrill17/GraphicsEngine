@@ -41,18 +41,18 @@ public:
 
 	void waitForIdle();
 
-	const inline Device& device() const { return _device; }
+	inline Device& device() { return _device; }
 	inline Swapchain& swapchain() { return _swapchain; }
 	inline Instance& instance() { return _instance; }
 	inline PipelineBuilder& pipelineBuilder() { return _pipelineBuilder; }
 	inline DescriptorLayoutBuilder& descriptorLayoutBuilder() { return _descriptorLayoutBuilder; }
 	inline DescriptorWriter& descriptorWriter() { return _descriptorWriter; }
-	const inline Allocator& allocator() const { return _allocator; }
-	const inline float aspectRatio() const { return _aspectRatio; }
+	inline Allocator& allocator() { return _allocator; }
+	inline float aspectRatio() { return _aspectRatio; }
 
 private:
-	Window& _window; // Main window to render to
-	Instance _instance;
+	Window& _window; // Window is created outside the renderer. This is a reference to it. A Renderer cannot exist without a window to render to, so it's not a pointer
+	Instance _instance; // Vulkan Instance
 	DebugMessenger _debugMessenger; // Vulkan debug messenger callback for validation layers
 	Device _device; // Device object containing physical and logical devices
 	Allocator _allocator; // Allocator for buffers and images
