@@ -1,7 +1,4 @@
-﻿# CMakeList.txt : CMake project for VulkanEngineV2, include source and define
-# project specific logic here.
-#
-cmake_minimum_required (VERSION 4.1)
+﻿cmake_minimum_required (VERSION 4.1)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -10,17 +7,21 @@ if (POLICY CMP0141)
 endif()
 
 # target_link_libraries() allows use with targets in other directories
+# (to use compile_project_shaders in any CMakeLists file)
 if(POLICY CMP0079)
     cmake_policy(SET CMP0079 NEW)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project ("VulkanProjects")
+# STEP 1) ENTER THE NAME OF THE PROJECT
+project("ProjectExecutable")
 
+# set executable output directory
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 
-add_compile_definitions(BASE_DIR="${CMAKE_SOURCE_DIR}") # Allows us to reference the project directory in-code
+# output compile_commands.json to properly set up clangd for use in neovim
+add_compile_definitions(BASE_DIR="${CMAKE_SOURCE_DIR}")
 
 # Sets C++ Standard to 23
 if (CMAKE_VERSION VERSION_GREATER 3.12)
@@ -58,8 +59,37 @@ function(compile_project_shaders PROJECT_NAME PROJECT_DIR)
     endif()
 endfunction()
 
+
+# STEP 2) Add any subtree directories
+
 # Build the render engine as a library first
 add_subdirectory(graphics_engine) # Contains all third-party libraries
 
-# Build all the projects (each project will link against the engine)
-add_subdirectory(fluid_sim) # Contains all source code
+
+# STEP 3) Create and define executable
+
+# Create the executable
+set(ExecutableName "2d-fluid-sim")
+add_executable(ProjectExecutable)
+
+# Add project source files
+file(GLOB_RECURSE PROJECT_A_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+)
+
+target_sources(ProjectExecutable PRIVATE ${PROJECT_A_SOURCES})
+
+# Link against the engine
+target_link_libraries(ProjectExecutable PRIVATE VulkanEngine)
+
+# Project-specific include directories
+target_include_directories(ProjectExecutable PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# Compile project-specific shaders
+compile_project_shaders(ProjectExecutable ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Optional: Set different output name
+set_target_properties(ProjectExecutable PROPERTIES OUTPUT_NAME ${ExecutableName})
+
