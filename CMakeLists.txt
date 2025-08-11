@@ -1,35 +1,76 @@
-﻿cmake_minimum_required (VERSION 4.1)
+# engine/CMakeLists.txt
+project("VulkanEngine")
 
-# Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+file(GLOB_RECURSE ENGINE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
+)
+
+file(GLOB_RECURSE ENGINE_HEADERS
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hxx"
+)
+
+# Engine as a static library
+add_library(VulkanEngine STATIC ${ENGINE_SOURCES} ${ENGINE_HEADERS})
+
+# Add engine source files
+#add_subdirectory(src)
+#add_subdirectory(include)
+add_subdirectory(dependencies) # This may change, want to use submodules for dependencies
+
+# Link Vulkan to the engine
+target_link_libraries(VulkanEngine PUBLIC Vulkan::Vulkan)
+
+# Make engine headers available to projects that link against it
+target_include_directories(VulkanEngine PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/dependencies
+)
+
+# Engine-specific compile features
+target_compile_features(VulkanEngine PUBLIC cxx_std_23)
+
+### Engine Shader Compilation
+find_program(GLSL_VALIDATOR glslangValidator HINTS 
+    /usr/bin 
+    /usr/local/bin 
+    $ENV{VULKAN_SDK}/Bin/ 
+    $ENV{VULKAN_SDK}/Bin32/
+)
+
+if(NOT GLSL_VALIDATOR)
+    message(WARNING "Could not find glslangValidator! Shaders will not be compiled.")
 endif()
 
-# target_link_libraries() allows use with targets in other directories
-# (to use compile_project_shaders in any CMakeLists file)
-if(POLICY CMP0079)
-    cmake_policy(SET CMP0079 NEW)
+# Find engine shader files
+file(GLOB_RECURSE ENGINE_GLSL_SOURCE_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.comp"
+)
+
+# Compile engine shaders
+set(ENGINE_SPIRV_BINARY_FILES "")
+foreach(GLSL ${ENGINE_GLSL_SOURCE_FILES})
+    get_filename_component(FILE_NAME ${GLSL} NAME)
+    set(SPIRV "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${FILE_NAME}.spv")
+    
+    add_custom_command(
+        OUTPUT ${SPIRV}
+        COMMAND ${GLSL_VALIDATOR} -V ${GLSL} -o ${SPIRV}
+        DEPENDS ${GLSL}
+        COMMENT "Compiling engine shader ${FILE_NAME}"
+    )
+    list(APPEND ENGINE_SPIRV_BINARY_FILES ${SPIRV})
+endforeach()
+
+# Engine shader target
+if(ENGINE_SPIRV_BINARY_FILES)
+    add_custom_target(EngineShaders DEPENDS ${ENGINE_SPIRV_BINARY_FILES})
+    add_dependencies(VulkanEngine EngineShaders)
 endif()
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# STEP 1) ENTER THE NAME OF THE PROJECT
-project("ProjectExecutable")
-
-# set executable output directory
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
-
-# output compile_commands.json to properly set up clangd for use in neovim
-add_compile_definitions(BASE_DIR="${CMAKE_SOURCE_DIR}")
-
-# Sets C++ Standard to 23
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set(CMAKE_CXX_STANDARD 23)
-  #set_property(TARGET VulkanEngineV2 PROPERTY CXX_STANDARD 23)
-endif()
-
-find_package(Vulkan REQUIRED) # Obtains all Vulkan API compiling info
 
 # Function to help projects compile their own shaders
 function(compile_project_shaders PROJECT_NAME PROJECT_DIR)
@@ -38,12 +79,12 @@ function(compile_project_shaders PROJECT_NAME PROJECT_DIR)
         "${PROJECT_DIR}/shaders/*.vert"
         "${PROJECT_DIR}/shaders/*.comp"
     )
-
+    
     set(PROJECT_SPIRV_FILES "")
     foreach(GLSL ${PROJECT_GLSL_FILES})
         get_filename_component(FILE_NAME ${GLSL} NAME)
         set(SPIRV "${PROJECT_DIR}/shaders/${FILE_NAME}.spv")
-
+        
         add_custom_command(
             OUTPUT ${SPIRV}
             COMMAND ${GLSL_VALIDATOR} -V ${GLSL} -o ${SPIRV}
@@ -52,44 +93,9 @@ function(compile_project_shaders PROJECT_NAME PROJECT_DIR)
         )
         list(APPEND PROJECT_SPIRV_FILES ${SPIRV})
     endforeach()
-
+    
     if(PROJECT_SPIRV_FILES)
         add_custom_target(${PROJECT_NAME}Shaders DEPENDS ${PROJECT_SPIRV_FILES})
         add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}Shaders)
     endif()
 endfunction()
-
-
-# STEP 2) Add any subtree directories
-
-# Build the render engine as a library first
-add_subdirectory(graphics_engine) # Contains all third-party libraries
-
-
-# STEP 3) Create and define executable
-
-# Create the executable
-set(ExecutableName "2d-fluid-sim")
-add_executable(ProjectExecutable)
-
-# Add project source files
-file(GLOB_RECURSE PROJECT_A_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-)
-
-target_sources(ProjectExecutable PRIVATE ${PROJECT_A_SOURCES})
-
-# Link against the engine
-target_link_libraries(ProjectExecutable PRIVATE VulkanEngine)
-
-# Project-specific include directories
-target_include_directories(ProjectExecutable PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-# Compile project-specific shaders
-compile_project_shaders(ProjectExecutable ${CMAKE_CURRENT_SOURCE_DIR})
-
-# Optional: Set different output name
-set_target_properties(ProjectExecutable PROPERTIES OUTPUT_NAME ${ExecutableName})
-
