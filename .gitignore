@@ -4,3 +4,5 @@ out/
 build/
 shaders/*.spv
 renderdoc/
+.cache/
+imgui.ini

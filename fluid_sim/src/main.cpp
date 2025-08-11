@@ -1,8 +1,5 @@
-#include <atomic>
 #include <iostream>
 #include <sstream>
-#include "vulkan/vulkan.h"
-#include "NonCopyable.h"
 #include "utility/window.h"
 #include "utility/camera.h"
 #include "utility/timer.h"
@@ -41,7 +38,7 @@ int main(int argc, char* argv[]) {
 	logger.activate(); // If debug mode, activate logger and print to the console
 #endif
 	try {
-		
+
 		static Timer& timer = Timer::getTimer();
 		static Gui& gui = Gui::getGui();
 
@@ -84,7 +81,7 @@ int main(int argc, char* argv[]) {
 		// The constructor of the particle system initializes the positions of the particles to a grid
 		ParticleSystem2D fluidParticles(particleInfo, physicsInfo, box, app->inputManager(), &mouseInteraction);
 
-		// We will use a uniform buffer for the global particle info 
+		// We will use a uniform buffer for the global particle info
 		Buffer globalParticleBuffer(app->renderer().device(), app->renderer().allocator(), sizeof(GlobalParticleInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, app->renderer().device().physicalDeviceProperies().limits.minUniformBufferOffsetAlignment);
 		globalParticleBuffer.map();
 

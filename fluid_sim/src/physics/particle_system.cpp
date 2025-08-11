@@ -1,5 +1,6 @@
 #include "physics/particle_system.h"
 #include <random>
+#include <algorithm>
 
 static const glm::vec2 down{ 0.0f, -0.1f };
 static const double pi = 3.14159265358979323846;
@@ -10,7 +11,7 @@ static long double norm(glm::vec2 v) {
 }
 
 ParticleSystem2D::ParticleSystem2D(
-	GlobalParticleInfo& particleInfo, 
+	GlobalParticleInfo& particleInfo,
 	GlobalPhysicsInfo& physicsInfo,
 	BoundingBox& box,
 	InputManager& inputManager,
@@ -130,7 +131,7 @@ void ParticleSystem2D::update() {
 	// In case numThreads doesn't divide numParticles evenly. If numThreads divides numParticles, then this should be equal to batchSize
 	int oddBatchOut = _globalParticleInfo.numParticles - (numThreads - 1) * batchSize;
 
-	// Fill batchSizes 
+	// Fill batchSizes
 	for (int i = 0; i < numThreads-1; i++) {
 		batchSizes.push_back(batchSize);
 	}
@@ -440,7 +441,7 @@ void ParticleSystem2D::resolveParticleCollisions() {
 }
 
 void ParticleSystem2D::sortSpatialArrays() {
-	
+
 	int numParticles = _globalParticleInfo.numParticles;
 	uint32_t* indices = new uint32_t[numParticles];
 
@@ -467,7 +468,7 @@ void ParticleSystem2D::sortSpatialArrays() {
 		_particleIndices[i] = sortedParticleIndices[i];
 		_spatialLookup[i] = sortedSpatialLookup[i];
 	}
-	
+
 	delete[] indices;
 	delete[] sortedParticleIndices;
 	delete[] sortedSpatialLookup;
@@ -561,7 +562,7 @@ float SmoothingKernels2D::spikeyDerivative(float squareDst, float smoothingRadiu
 	float rmag = glm::sqrt(squareDst);
 	if (rmag > smoothingRadius)
 		return 0;
-	
+
 	return -30.f / (pi * pow(smoothingRadius, 5)) * pow(smoothingRadius - rmag, 2);
 }
 
