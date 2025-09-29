@@ -8,9 +8,9 @@
 
 namespace Logger {
     // @brief Log error to stderr
-    void logError(const char* errorMessage);
-    void logError(std::stringstream errorMessage);
     void logError(std::string errorMessage);
+
+    void log(std::string message);
 
 	// @brief Print a list of strings
 	void printList(std::vector<const char*>& list);

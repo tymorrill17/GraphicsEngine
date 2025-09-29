@@ -1,5 +1,6 @@
 #pragma once
 #include "NonCopyable.h"
+#include "renderer/shader.h"
 #include "utility/logger.h"
 #include "renderer/command.h"
 #include "utility/allocator.h"
@@ -58,6 +59,7 @@ public:
 	inline DescriptorLayoutBuilder& descriptorLayoutBuilder() { return _descriptorLayoutBuilder; }
 	inline DescriptorWriter& descriptorWriter() { return _descriptorWriter; }
 	inline DeviceMemoryManager& deviceMemoryManager() { return _deviceMemoryManager; }
+	inline ShaderManager& shaderManager() { return _shaderManager; }
 
 private:
 	Window& _window; // Main window to render to. It is a reference because the renderer does not create it.
@@ -79,6 +81,9 @@ private:
     // Descriptor sets
 	DescriptorLayoutBuilder _descriptorLayoutBuilder; // Build descriptor set layouts
 	DescriptorWriter _descriptorWriter; // Binds and writes descriptor layouts
+
+    // Shaders
+    ShaderManager _shaderManager;
 
     // Render systems dictate the nature of how objects that use them are rendered
     std::vector<RenderSystem*> _renderSystems; // List of render systems that get called each frame
